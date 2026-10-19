@@ -1,0 +1,134 @@
+import 'dart:io';
+
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../shared/preferences/hazuki_preference_keys.dart';
+import '../../shared/reading/reader_settings_store.dart';
+import 'cloud_sync_models.dart';
+
+class CloudSyncConfigStore {
+  static const enabledKey = 'cloud_sync_enabled';
+  static const urlKey = 'cloud_sync_url';
+  static const usernameKey = 'cloud_sync_username';
+  static const passwordKey = 'cloud_sync_password';
+  static const lastSyncedRemoteTsKey = 'cloud_sync_last_synced_remote_ts';
+  static const lastSyncedRemoteTargetKey =
+      'cloud_sync_last_synced_remote_target';
+  static const downloadStateKey = 'manga_download_service_state_v2';
+  static const downloadsRootPathKey = 'manga_download_root_path_v1';
+  static const legacyReadHistoryKey = 'hazuki_read_history';
+  static const legacyReadingProgressPrefix = 'reading_progress_';
+  static const imageCacheMaxBytesKey = 'image_cache_max_bytes';
+  static const imageCacheLastAutoCleanAtKey = 'image_cache_last_auto_clean_at';
+
+  static const settingsFileName = 'settings.json';
+  static const readingFileName = 'reading.json';
+  static const legacyReadingFileName = 'reading.sqlite';
+  static const searchHistoryFileName = 'search_history.jsonl';
+  static const manifestFileName = 'manifest.json';
+  static const syncLockFileName = '.sync_lock';
+
+  static const localFavoriteFoldersKey = 'local_favorite_folders_v1';
+  static const localFavoriteEntriesKey = 'local_favorite_entries_v1';
+  static const folderTombstonesKey = 'local_favorite_folder_tombstones_v1';
+  static const entryTombstonesKey = 'local_favorite_entry_tombstones_v1';
+  static const comicFolderTombstonesKey =
+      'local_favorite_comic_folder_tombstones_v1';
+  static const downloadGroupsKey = 'download_groups_v1';
+
+  static const Set<String> alwaysSkippedSettings = {
+    'cookie_store_v1',
+    downloadStateKey,
+    downloadsRootPathKey,
+    imageCacheMaxBytesKey,
+    imageCacheLastAutoCleanAtKey,
+    ReaderSettingsStore.readingModeKey,
+    ReaderSettingsStore.doublePageModeKey,
+    ReaderSettingsStore.filterEnabledKey,
+    ReaderSettingsStore.filterColorKey,
+    ReaderSettingsStore.filterStrengthKey,
+  };
+
+  static bool shouldAlwaysSkipSetting(String key) {
+    return alwaysSkippedSettings.contains(key) ||
+        key == legacyReadHistoryKey ||
+        key.startsWith(legacyReadingProgressPrefix) ||
+        key == hazukiDiscoverDailyRecommendationCachePreferenceKey ||
+        key.startsWith(
+          '${hazukiDiscoverDailyRecommendationCachePreferenceKey}_',
+        ) ||
+        key.startsWith('cloud_sync_') ||
+        key.startsWith('cookie_store_v2_');
+  }
+
+  /// Keys that bypass the generic settings-restore loop and are restored
+  /// specially during manual full restore so missing keys clear local state.
+  static const Set<String> restoreSkippedSettings = {
+    localFavoriteFoldersKey,
+    localFavoriteEntriesKey,
+    folderTombstonesKey,
+    entryTombstonesKey,
+    comicFolderTombstonesKey,
+    downloadGroupsKey,
+  };
+  static const Set<String> windowsOnlySettings = {
+    hazukiUseSystemTitleBarPreferenceKey,
+  };
+  static const Set<String> androidOnlySettings = {'appearance_display_mode'};
+
+  Future<CloudSyncConfig> loadConfig() async {
+    final prefs = await SharedPreferences.getInstance();
+    return CloudSyncConfig(
+      enabled: prefs.getBool(enabledKey) ?? false,
+      url: prefs.getString(urlKey) ?? '',
+      username: prefs.getString(usernameKey) ?? '',
+      password: prefs.getString(passwordKey) ?? '',
+    );
+  }
+
+  Future<void> saveConfig(CloudSyncConfig config) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(enabledKey, config.enabled);
+    await prefs.setString(urlKey, config.url.trim());
+    await prefs.setString(usernameKey, config.username.trim());
+    await prefs.setString(passwordKey, config.password);
+  }
+
+  Future<int> loadLastSyncedRemoteTs(CloudSyncConfig config) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getString(lastSyncedRemoteTargetKey) != _syncTarget(config)) {
+      return 0;
+    }
+    return prefs.getInt(lastSyncedRemoteTsKey) ?? 0;
+  }
+
+  Future<void> saveLastSyncedRemoteTs(int value, CloudSyncConfig config) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(lastSyncedRemoteTsKey, value);
+    await prefs.setString(lastSyncedRemoteTargetKey, _syncTarget(config));
+  }
+
+  String _syncTarget(CloudSyncConfig config) =>
+      '${rootUrl(config.url)}\n${config.username.trim()}';
+
+  String rootUrl(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) {
+      return '';
+    }
+    final normalized = trimmed.endsWith('/')
+        ? trimmed.substring(0, trimmed.length - 1)
+        : trimmed;
+    return '$normalized/HazukiSync';
+  }
+
+  String get currentPlatformName {
+    if (Platform.isWindows) {
+      return 'windows';
+    }
+    if (Platform.isAndroid) {
+      return 'android';
+    }
+    return 'unknown';
+  }
+}

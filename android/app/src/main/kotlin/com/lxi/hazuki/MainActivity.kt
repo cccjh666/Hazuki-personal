@@ -1,0 +1,127 @@
+package com.lxi.hazuki
+
+import android.content.Intent
+import android.os.Bundle
+import android.view.KeyEvent
+import io.flutter.embedding.android.FlutterFragmentActivity
+import io.flutter.embedding.engine.FlutterEngine
+
+private const val SEARCH_SHORTCUT_URI = "hazuki://shortcut/search"
+private const val SEARCH_SHORTCUT_ACTION = "search"
+
+class MainActivity : FlutterFragmentActivity() {
+    private lateinit var displayModeManager: DisplayModeManager
+    private lateinit var privacyManager: PrivacyManager
+    private lateinit var flutterChannels: MainActivityChannels
+    private lateinit var externalAuthorization: PluginExternalAuthorization
+
+    private var isFirstLaunch = true
+    private var wasInBackground = false
+    private var pendingInitialLaunchAction: String? = null
+    private var isLaunchingSystemDirectoryPicker = false
+
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        super.configureFlutterEngine(flutterEngine)
+        flutterChannels = MainActivityChannels(
+            activity = this,
+            privacyManager = privacyManager,
+            displayModeManager = displayModeManager
+        )
+        flutterChannels.register(flutterEngine)
+        PluginAuthorizationBrowser(this, flutterEngine).register()
+        externalAuthorization = PluginExternalAuthorization(this, flutterEngine)
+        externalAuthorization.consume(intent)
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        applyLaunchThemeFromAppearance()
+        pendingInitialLaunchAction = resolveLaunchAction(intent)
+        displayModeManager = DisplayModeManager(this)
+        privacyManager = PrivacyManager(this)
+        super.onCreate(savedInstanceState)
+
+        displayModeManager.applyHighRefreshRateMode()
+        privacyManager.onActivityCreated()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        val consumedAuthorization = ::externalAuthorization.isInitialized && externalAuthorization.consume(intent)
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (consumedAuthorization) return
+        val launchAction = resolveLaunchAction(intent) ?: return
+        if (::flutterChannels.isInitialized) {
+            flutterChannels.emitLaunchAction(launchAction)
+            return
+        }
+        pendingInitialLaunchAction = launchAction
+    }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (::flutterChannels.isInitialized && flutterChannels.handleReaderVolumeButtonKeyEvent(event)) {
+            return true
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+        if (::flutterChannels.isInitialized && flutterChannels.handleReaderVolumeButtonKeyEvent(event)) {
+            return true
+        }
+        return super.onKeyUp(keyCode, event)
+    }
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        if (!isLaunchingSystemDirectoryPicker) {
+            privacyManager.applyRecentsBlackoutIfEnabled()
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        if (!isLaunchingSystemDirectoryPicker) {
+            privacyManager.applyRecentsBlackoutIfEnabled()
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        privacyManager.applyRecentsBlackoutIfEnabled()
+        wasInBackground = true
+        privacyManager.markUnauthenticated()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        isLaunchingSystemDirectoryPicker = false
+        privacyManager.onResume(
+            isFirstLaunch = isFirstLaunch,
+            wasInBackground = wasInBackground
+        )
+        isFirstLaunch = false
+        wasInBackground = false
+    }
+
+    fun consumeInitialLaunchAction(): String? {
+        val launchAction = pendingInitialLaunchAction
+        pendingInitialLaunchAction = null
+        return launchAction
+    }
+
+    fun prepareForSystemDirectoryPicker() {
+        isLaunchingSystemDirectoryPicker = true
+    }
+
+    fun cancelSystemDirectoryPickerLaunch() {
+        isLaunchingSystemDirectoryPicker = false
+    }
+
+    private fun resolveLaunchAction(intent: Intent?): String? {
+        val data = intent?.dataString ?: return null
+        return when (data) {
+            SEARCH_SHORTCUT_URI -> SEARCH_SHORTCUT_ACTION
+            else -> null
+        }
+    }
+}

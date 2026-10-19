@@ -1,0 +1,81 @@
+# See https://www.dartlang.org/guides/libraries/private-files
+
+# Files and directories created by pub
+.dart_tool/
+.packages
+build/
+lib/l10n/app_localizations*.dart
+# Keep the application lockfile; ignore lockfiles in vendored packages.
+pubspec.lock
+!/pubspec.lock
+
+# Directory created by dartdoc
+# If you don't generate documentation locally you can remove this line.
+doc/api/
+
+# dotenv environment variables file
+.env*
+
+# Avoid committing generated Javascript files:
+*.dart.js
+*.info.json      # Produced by the --dump-info flag.
+*.js_
+*.js.deps
+*.js.map
+
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# IDE
+.idea/
+.vscode/
+.claude/
+.mimosa/
+.metadata
+*.iml
+
+# OS files
+.DS_Store
+
+# Local diagnostics
+analyze_out.txt
+android/clean.log
+android/gradle_error.txt
+
+# Android-specific
+**/*.cxx/
+**/.kotlin/
+**/build/
+android/local.properties
+android/key.properties
+android/bundle/
+android/app/build/
+android/app/.cxx/
+*.keystore
+!android/app/debug.keystore
+
+# third_party build artifacts
+third_party/**/.cxx/
+third_party/**/build/
+
+**/.gradle/
+# Test coverage
+coverage/
+
+# Windows signing artifacts
+*.cer
+*.pfx
+
+# Git hooks
+.githooks/
+
+# Local commit-message scratch files
+.commit-msg.tmp
+
+# Local announcement documentation
+ANNOUNCEMENT_GUIDE.md
+
+# Flutter ephemeral files
+**/ephemeral/
+**/Generated.xcconfig
+**/flutter_export_environment.sh

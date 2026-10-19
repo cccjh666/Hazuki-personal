@@ -1,0 +1,547 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:hazuki/features/settings/state/cache_settings_controller.dart';
+import 'package:hazuki/l10n/app_localizations.dart';
+import 'package:hazuki/services/source/source_capabilities.dart';
+import 'package:hazuki/widgets/widgets.dart';
+import 'package:loading_indicator_m3e/loading_indicator_m3e.dart';
+import 'settings_group.dart';
+
+class CacheSettingsPage extends StatefulWidget {
+  const CacheSettingsPage({super.key, required this.sourceService});
+
+  final SourceSettingsGateway sourceService;
+
+  @override
+  State<CacheSettingsPage> createState() => _CacheSettingsPageState();
+}
+
+class _CacheSettingsPageState extends State<CacheSettingsPage> {
+  late final CacheSettingsController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = CacheSettingsController(sourceService: widget.sourceService);
+    unawaited(_controller.loadStatus());
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  String _formatBytes(int bytes) {
+    if (bytes <= 0) {
+      return '0 MB';
+    }
+    final mb = bytes / 1024 / 1024;
+    if (mb < 1024) {
+      return '${mb.toStringAsFixed(0)} MB';
+    }
+    final gb = mb / 1024;
+    return '${gb.toStringAsFixed(2)} GB';
+  }
+
+  String _formatAnimatedBytes(double bytes, int targetBytes) {
+    if (targetBytes >= 1024 * 1024 * 1024) {
+      return (bytes / 1024 / 1024 / 1024).toStringAsFixed(2);
+    }
+    return (bytes / 1024 / 1024).toStringAsFixed(0);
+  }
+
+  String _animatedBytesUnit(int targetBytes) {
+    return targetBytes >= 1024 * 1024 * 1024 ? 'GB' : 'MB';
+  }
+
+  Future<void> _chooseCacheMaxSize() async {
+    final strings = AppLocalizations.of(context)!;
+    final presets = <(String label, int mb)>[
+      (strings.cachePresetDefault, 400),
+      (strings.cachePresetLite, 600),
+      (strings.cachePresetBalanced, 1024),
+      (strings.cachePresetHeavy, 2048),
+    ];
+
+    final controller = TextEditingController();
+    var selectedMb = (_controller.maxBytes / 1024 / 1024).round();
+
+    final result = await showModalBottomSheet<int>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  top: 8,
+                  bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 16,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      strings.cacheMaxSizeTitle,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(strings.cacheMaxSizeHint),
+                    const SizedBox(height: 10),
+                    ...presets.map(
+                      (preset) => ListTile(
+                        onTap: () {
+                          setSheetState(() {
+                            selectedMb = preset.$2;
+                            controller.clear();
+                          });
+                        },
+                        leading: Icon(
+                          selectedMb == preset.$2
+                              ? Icons.radio_button_checked
+                              : Icons.radio_button_unchecked,
+                        ),
+                        title: Text(preset.$1),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    TextField(
+                      controller: controller,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: strings.cacheCustomMbLabel,
+                        hintText: strings.cacheCustomMbHint,
+                        border: const OutlineInputBorder(),
+                      ),
+                      onChanged: (value) {
+                        final parsed = int.tryParse(value.trim());
+                        if (parsed == null) {
+                          return;
+                        }
+                        setSheetState(() {
+                          selectedMb = parsed;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    FilledButton(
+                      onPressed: () {
+                        Navigator.pop(sheetContext, selectedMb);
+                      },
+                      child: Text(strings.commonConfirm),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (result == null) {
+      return;
+    }
+
+    final normalizedMb = await _controller.setMaxBytesFromMb(result);
+    if (!mounted) {
+      return;
+    }
+    unawaited(
+      showHazukiPrompt(context, strings.cacheLimitUpdated('$normalizedMb')),
+    );
+  }
+
+  Future<void> _chooseAutoCleanMode() async {
+    final strings = AppLocalizations.of(context)!;
+    final result = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        var selected = _controller.autoCleanMode;
+        return StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      strings.cacheAutoCleanTitle,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    ListTile(
+                      onTap: () {
+                        setSheetState(() {
+                          selected = 'size_overflow';
+                        });
+                      },
+                      leading: Icon(
+                        selected == 'size_overflow'
+                            ? Icons.radio_button_checked
+                            : Icons.radio_button_unchecked,
+                      ),
+                      title: Text(strings.cacheAutoCleanOverflowTitle),
+                      subtitle: Text(strings.cacheAutoCleanOverflowSubtitle),
+                    ),
+                    ListTile(
+                      onTap: () {
+                        setSheetState(() {
+                          selected = 'seven_days';
+                        });
+                      },
+                      leading: Icon(
+                        selected == 'seven_days'
+                            ? Icons.radio_button_checked
+                            : Icons.radio_button_unchecked,
+                      ),
+                      title: Text(strings.cacheAutoCleanSevenDaysTitle),
+                      subtitle: Text(strings.cacheAutoCleanSevenDaysSubtitle),
+                    ),
+                    const SizedBox(height: 8),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(sheetContext, selected),
+                      child: Text(strings.commonConfirm),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (result == null) {
+      return;
+    }
+
+    await _controller.setAutoCleanMode(result);
+    if (!mounted) {
+      return;
+    }
+    unawaited(
+      showHazukiPrompt(
+        context,
+        result == 'seven_days'
+            ? strings.cacheAutoCleanSevenDaysApplied
+            : strings.cacheAutoCleanOverflowApplied,
+      ),
+    );
+  }
+
+  Future<void> _clearCacheNow() async {
+    final strings = AppLocalizations.of(context)!;
+    final confirm = await showGeneralDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: strings.cacheClearBarrierLabel,
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 240),
+      pageBuilder: (ctx, anim1, anim2) {
+        return AlertDialog(
+          title: Text(strings.cacheClearTitle),
+          content: Text(strings.cacheClearContent),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(strings.commonCancel),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError,
+              ),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(strings.cacheClearConfirm),
+            ),
+          ],
+        );
+      },
+      transitionBuilder: (ctx, anim, secondaryAnim, child) {
+        return FadeTransition(
+          opacity: anim,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.9, end: 1.0).animate(
+              CurvedAnimation(parent: anim, curve: Curves.easeOutCubic),
+            ),
+            child: child,
+          ),
+        );
+      },
+    );
+
+    if (confirm != true || !mounted) {
+      return;
+    }
+
+    try {
+      await _controller.clearCache();
+      if (!mounted) {
+        return;
+      }
+      unawaited(showHazukiPrompt(context, strings.cacheCleared));
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+      unawaited(
+        showHazukiPrompt(
+          context,
+          strings.cacheClearFailed('$e'),
+          isError: true,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppLocalizations.of(context)!;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      appBar: hazukiFrostedAppBar(
+        context: context,
+        title: Text(strings.cacheSettingsTitle),
+      ),
+      body: HazukiSettingsPageBody(
+        child: ListenableBuilder(
+          listenable: _controller,
+          builder: (context, _) {
+            final maxBytes = _controller.maxBytes;
+            final usedBytes = _controller.usedBytes;
+            final autoCleanMode = _controller.autoCleanMode;
+            final usageRatio = maxBytes > 0
+                ? (usedBytes / maxBytes).clamp(0.0, 1.0)
+                : 0.0;
+            final isUsageHigh = usageRatio > 0.9;
+            final usageColor = isUsageHigh
+                ? colorScheme.error
+                : colorScheme.primary;
+
+            return ListView(
+              padding: const EdgeInsets.only(bottom: 32),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Container(
+                    padding: const EdgeInsets.all(24.0),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerHighest.withValues(
+                        alpha: 0.45,
+                      ),
+                      borderRadius: BorderRadius.circular(24.0),
+                      border: Border.all(
+                        color: colorScheme.outlineVariant.withValues(
+                          alpha: 0.5,
+                        ),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.sd_storage_rounded,
+                              color: usageColor,
+                              size: 24,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              strings.cacheSizeTitle,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        AnimatedSize(
+                          alignment: Alignment.topCenter,
+                          duration: const Duration(milliseconds: 240),
+                          curve: Curves.easeOutCubic,
+                          child: _controller.loading
+                              ? SizedBox(
+                                  height: 64,
+                                  child: Row(
+                                    children: [
+                                      const SizedBox(
+                                        width: 36,
+                                        height: 36,
+                                        child: LoadingIndicatorM3E(),
+                                      ),
+                                      const Spacer(),
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 4.0,
+                                        ),
+                                        child: Text(
+                                          '/ ${_formatBytes(maxBytes)}',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                            color: colorScheme.onSurfaceVariant,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : TweenAnimationBuilder<double>(
+                                  tween: Tween<double>(
+                                    begin: 0,
+                                    end: usedBytes.toDouble(),
+                                  ),
+                                  duration: const Duration(milliseconds: 700),
+                                  curve: Curves.easeOutCubic,
+                                  builder: (context, animatedUsedBytes, _) {
+                                    final animatedUsageRatio = maxBytes > 0
+                                        ? (animatedUsedBytes / maxBytes).clamp(
+                                            0.0,
+                                            1.0,
+                                          )
+                                        : 0.0;
+
+                                    return Column(
+                                      children: [
+                                        Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.end,
+                                          children: [
+                                            Text(
+                                              _formatAnimatedBytes(
+                                                animatedUsedBytes,
+                                                usedBytes,
+                                              ),
+                                              style: TextStyle(
+                                                fontSize: 36,
+                                                fontWeight: FontWeight.w700,
+                                                color: colorScheme.onSurface,
+                                                height: 1.0,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                bottom: 4.0,
+                                              ),
+                                              child: Text(
+                                                _animatedBytesUnit(usedBytes),
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: colorScheme
+                                                      .onSurfaceVariant,
+                                                ),
+                                              ),
+                                            ),
+                                            const Spacer(),
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                bottom: 4.0,
+                                              ),
+                                              child: Text(
+                                                '/ ${_formatBytes(maxBytes)}',
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: colorScheme
+                                                      .onSurfaceVariant,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 16),
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(
+                                            8.0,
+                                          ),
+                                          child: LinearProgressIndicator(
+                                            value: animatedUsageRatio,
+                                            minHeight: 8,
+                                            backgroundColor: colorScheme
+                                                .surfaceContainerHighest,
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                                  usageColor,
+                                                ),
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.settings_overscan_outlined),
+                  title: Text(strings.cacheMaxSizeTitle),
+                  subtitle: Text(strings.cacheMaxSizeHint),
+                  onTap: _chooseCacheMaxSize,
+                ),
+                ListTile(
+                  leading: const Icon(Icons.auto_delete_outlined),
+                  title: Text(strings.cacheAutoCleanTitle),
+                  subtitle: Text(
+                    autoCleanMode == 'seven_days'
+                        ? strings.cacheAutoCleanModeSummary
+                        : strings.cacheAutoCleanModeOverflowSummary,
+                  ),
+                  onTap: _chooseAutoCleanMode,
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 8.0,
+                  ),
+                  child: Divider(
+                    height: 1,
+                    color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                  ),
+                ),
+                ListTile(
+                  leading: Icon(
+                    Icons.delete_sweep_outlined,
+                    color: colorScheme.error,
+                  ),
+                  title: Text(
+                    strings.cacheClearNowTitle,
+                    style: TextStyle(
+                      color: colorScheme.error,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  subtitle: Text(strings.cacheClearNowSubtitle),
+                  onTap: _clearCacheNow,
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}

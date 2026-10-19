@@ -1,0 +1,112 @@
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'app_preferences.dart';
+import 'appearance_settings.dart';
+import 'display_mode.dart';
+
+class HazukiAppSettingsStore {
+  const HazukiAppSettingsStore();
+
+  static const String _themeModeKey = 'appearance_theme_mode';
+  static const String _oledPureBlackKey = 'appearance_oled_pure_black';
+  static const String _dynamicColorKey = 'appearance_dynamic_color';
+  static const String _presetIndexKey = 'appearance_preset_index';
+  static const String _displayModeKey = 'appearance_display_mode';
+  static const String _comicDetailDynamicColorKey =
+      'appearance_comic_detail_dynamic_color';
+  static const String _useSystemFontKey = 'appearance_use_system_font';
+  static const String _liquidGlassEnabledKey = 'appearance_liquid_glass';
+  static const String _discoverSectionLayoutKey =
+      'appearance_discover_section_layout';
+  static const String _favoriteLayoutKey = 'appearance_favorite_layout';
+
+  Future<AppearanceSettingsData> loadAppearance() async {
+    final prefs = await SharedPreferences.getInstance();
+    final mode = AppearanceSettingsData.decodeThemeMode(
+      prefs.getString(_themeModeKey),
+    );
+    var presetIndex =
+        prefs.getInt(_presetIndexKey) ?? hazukiDefaultAppearancePresetIndex;
+    if (presetIndex < 0 || presetIndex >= kHazukiColorPresets.length) {
+      presetIndex = hazukiDefaultAppearancePresetIndex;
+    }
+    final displayModeRaw = prefs.getString(_displayModeKey) ?? 'native:auto';
+    await applyHazukiPreferredDisplayMode(displayModeRaw);
+
+    return AppearanceSettingsData(
+      themeMode: mode,
+      oledPureBlack: prefs.getBool(_oledPureBlackKey) ?? false,
+      dynamicColor:
+          prefs.getBool(_dynamicColorKey) ?? hazukiDefaultDynamicColorEnabled,
+      presetIndex: presetIndex,
+      displayModeRaw: displayModeRaw,
+      comicDetailDynamicColor:
+          prefs.getBool(_comicDetailDynamicColorKey) ?? false,
+      useSystemFont: prefs.getBool(_useSystemFontKey) ?? true,
+      liquidGlassEnabled: prefs.getBool(_liquidGlassEnabledKey) ?? true,
+      discoverSectionLayout: DiscoverSectionLayout.decode(
+        prefs.getString(_discoverSectionLayoutKey),
+      ),
+      favoriteLayout: FavoriteLayout.decode(
+        prefs.getString(_favoriteLayoutKey),
+      ),
+    );
+  }
+
+  Future<void> saveAppearance(AppearanceSettingsData next) async {
+    final prefs = await SharedPreferences.getInstance();
+    final modeRaw = AppearanceSettingsData.encodeThemeMode(next.themeMode);
+    await prefs.setString(_themeModeKey, modeRaw);
+    await prefs.setBool(_oledPureBlackKey, next.oledPureBlack);
+    await prefs.setBool(_dynamicColorKey, next.dynamicColor);
+    await prefs.setInt(_presetIndexKey, next.presetIndex);
+    await prefs.setString(_displayModeKey, next.displayModeRaw);
+    await prefs.setBool(
+      _comicDetailDynamicColorKey,
+      next.comicDetailDynamicColor,
+    );
+    await prefs.setBool(_useSystemFontKey, next.useSystemFont);
+    await prefs.setBool(_liquidGlassEnabledKey, next.liquidGlassEnabled);
+    await prefs.setString(
+      _discoverSectionLayoutKey,
+      next.discoverSectionLayout.name,
+    );
+    await prefs.setString(_favoriteLayoutKey, next.favoriteLayout.name);
+  }
+
+  Future<Locale?> loadLocalePreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    final localeTag = prefs.getString(hazukiLocalePreferenceKey);
+    return _localeFromTag(localeTag);
+  }
+
+  Future<Locale?> saveLocalePreference(Locale? locale) async {
+    final prefs = await SharedPreferences.getInstance();
+    final localeTag = switch (locale?.languageCode) {
+      'zh' => 'zh',
+      'en' => 'en',
+      _ => 'system',
+    };
+    await prefs.setString(hazukiLocalePreferenceKey, localeTag);
+    return localeTag == 'system' ? null : locale;
+  }
+
+  Future<bool> loadUseSystemTitleBar() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(hazukiUseSystemTitleBarPreferenceKey) ?? false;
+  }
+
+  Future<void> saveUseSystemTitleBar(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(hazukiUseSystemTitleBarPreferenceKey, value);
+  }
+
+  Locale? _localeFromTag(String? localeTag) {
+    return switch (localeTag) {
+      'zh' => const Locale('zh'),
+      'en' => const Locale('en'),
+      _ => null,
+    };
+  }
+}

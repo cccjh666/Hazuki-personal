@@ -1,0 +1,54 @@
+import 'package:flutter/material.dart';
+
+import 'package:hazuki/models/hazuki_models.dart';
+
+typedef ComicDetailCoverPreviewPageBuilder =
+    Widget Function({
+      required String imageUrl,
+      required String sourceKey,
+      required String heroTag,
+      required VoidCallback onLongPress,
+    });
+
+typedef ComicDetailChaptersPanelBuilder =
+    Widget Function({
+      required ComicDetailsData details,
+      required ValueChanged<Set<String>> onDownloadConfirm,
+      required void Function(String epId, String chapterTitle, int index)
+      onChapterTap,
+    });
+
+typedef ComicDetailReaderPageBuilder =
+    Widget Function({
+      required ComicDetailsData details,
+      required String chapterTitle,
+      required String epId,
+      required int chapterIndex,
+      required ThemeData comicTheme,
+    });
+
+typedef ComicDetailSearchPageBuilder = Widget Function(String initialKeyword);
+
+typedef ComicDetailNestedPageBuilder =
+    Widget Function(ExploreComic comic, String heroTag);
+
+typedef ComicDetailCategoryPageBuilder =
+    Widget Function({
+      required String title,
+      required String viewMoreUrl,
+      required ComicDetailNestedPageBuilder comicDetailPageBuilder,
+    });
+
+typedef ReaderWidgetBuilder =
+    Widget Function({
+      required String title,
+      required String chapterTitle,
+      required String comicId,
+      required String epId,
+      required int chapterIndex,
+      required List<String> images,
+      required String sourceKey,
+      String coverUrl,
+      ThemeData? comicTheme,
+      Future<void> Function(BuildContext)? onFavoriteRequested,
+    });

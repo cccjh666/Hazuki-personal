@@ -1,0 +1,356 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:hazuki/shared/windows/windows_comic_detail.dart';
+import 'package:hazuki/l10n/app_localizations.dart';
+import 'package:hazuki/models/hazuki_models.dart';
+import 'package:hazuki/features/discover/view/discover_page.dart';
+import 'package:hazuki/features/discover/view/discover_page_body.dart';
+import 'package:hazuki/shared/appearance/appearance_settings.dart';
+import 'package:hazuki/shared/discover_back_to_top_notification.dart';
+import 'package:hazuki/services/source/runtime/source_runtime_assembly.dart';
+import 'package:hazuki/app/service_locator.dart';
+import 'package:hazuki/services/discover_daily_recommendation_service.dart';
+import 'package:hazuki/services/source/source_capabilities.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../support/test_service_locator.dart';
+
+const double _selectedIndicatorRenderWidth = 28;
+const double _unselectedIndicatorRenderWidth = 14;
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() async {
+    SharedPreferences.setMockInitialValues(const {});
+    await ensureTestServiceLocator();
+  });
+
+  tearDown(() {
+    WindowsComicDetailController.instance.close();
+  });
+
+  for (final layout in DiscoverSectionLayout.values) {
+    testWidgets('back to top visibility and action for ${layout.name}', (
+      tester,
+    ) async {
+      DiscoverBackToTopNotification? latest;
+      await tester.pumpWidget(
+        NotificationListener<DiscoverBackToTopNotification>(
+          onNotification: (notification) {
+            latest = notification;
+            return true;
+          },
+          child: _buildDiscoverPage(const [], layout: layout),
+        ),
+      );
+      expect(latest?.visible, isFalse);
+      final controller = tester
+          .widget<DiscoverPageBody>(find.byType(DiscoverPageBody))
+          .scrollController;
+      controller.jumpTo(520);
+      expect(latest?.visible, isFalse);
+      controller.jumpTo(600);
+      expect(latest?.visible, layout != DiscoverSectionLayout.horizontal);
+      latest!.onPressed();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(controller.offset, 0);
+      expect(latest?.visible, isFalse);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  group('Discover daily recommendation carousel', () {
+    testWidgets('shows login action for Picacg discover before sign in', (
+      tester,
+    ) async {
+      await sl<SourceRuntimeAssembly>().runtimeRegistry.activateSource(
+        'picacg',
+      );
+      var loginRequests = 0;
+
+      await tester.pumpWidget(
+        _buildDiscoverPage(
+          const <DiscoverDailyRecommendationEntry>[],
+          onRequestLogin: () async {
+            loginRequests++;
+          },
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('Please sign in to your account first'), findsOneWidget);
+      await tester.tap(find.text('Sign in'));
+      await tester.pump();
+
+      expect(loginRequests, 1);
+    });
+
+    testWidgets(
+      'renders carousel and indicator count for multiple recommendations',
+      (tester) async {
+        final recommendations = <DiscoverDailyRecommendationEntry>[
+          _recommendation('1', 'Author 1', 'Comic 1'),
+          _recommendation('2', 'Author 2', 'Comic 2'),
+          _recommendation('3', 'Author 3', 'Comic 3'),
+        ];
+
+        await tester.pumpWidget(_buildDiscoverPage(recommendations));
+
+        expect(
+          find.byKey(const ValueKey('discover_daily_recommendation_page_view')),
+          findsOneWidget,
+        );
+        expect(find.text('Comic 1'), findsOneWidget);
+        expect(find.text('Author 1'), findsOneWidget);
+
+        for (var index = 0; index < recommendations.length; index++) {
+          expect(
+            find.byKey(
+              ValueKey('discover_daily_recommendation_indicator_$index'),
+            ),
+            findsOneWidget,
+          );
+        }
+      },
+    );
+
+    testWidgets('auto play advances indicator after one cycle', (tester) async {
+      final recommendations = <DiscoverDailyRecommendationEntry>[
+        _recommendation('1', 'Author 1', 'Comic 1'),
+        _recommendation('2', 'Author 2', 'Comic 2'),
+      ];
+
+      await tester.pumpWidget(_buildDiscoverPage(recommendations));
+      await _moveMouseAway(tester);
+
+      expect(_indicatorWidth(tester, 0), _selectedIndicatorRenderWidth);
+      expect(_indicatorWidth(tester, 1), _unselectedIndicatorRenderWidth);
+
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump(const Duration(milliseconds: 250));
+
+      expect(_indicatorWidth(tester, 0), _unselectedIndicatorRenderWidth);
+      expect(_indicatorWidth(tester, 1), _selectedIndicatorRenderWidth);
+    });
+
+    testWidgets('loop boundary returns indicator to first item', (
+      tester,
+    ) async {
+      final recommendations = <DiscoverDailyRecommendationEntry>[
+        _recommendation('1', 'Author 1', 'Comic 1'),
+        _recommendation('2', 'Author 2', 'Comic 2'),
+      ];
+
+      await tester.pumpWidget(_buildDiscoverPage(recommendations));
+      await _moveMouseAway(tester);
+
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump(const Duration(milliseconds: 250));
+
+      expect(_indicatorWidth(tester, 0), _selectedIndicatorRenderWidth);
+      expect(_indicatorWidth(tester, 1), _unselectedIndicatorRenderWidth);
+    });
+
+    testWidgets('manual swipe past the last item loops without losing state', (
+      tester,
+    ) async {
+      final recommendations = <DiscoverDailyRecommendationEntry>[
+        _recommendation('1', 'Author 1', 'Comic 1'),
+        _recommendation('2', 'Author 2', 'Comic 2'),
+      ];
+
+      await tester.pumpWidget(_buildDiscoverPage(recommendations));
+      await _moveMouseAway(tester);
+
+      final carousel = find.byKey(
+        const ValueKey('discover_daily_recommendation_page_view'),
+      );
+
+      await tester.drag(carousel, const Offset(-320, 0));
+      await tester.pumpAndSettle();
+
+      expect(_indicatorWidth(tester, 0), _unselectedIndicatorRenderWidth);
+      expect(_indicatorWidth(tester, 1), _selectedIndicatorRenderWidth);
+
+      await tester.drag(carousel, const Offset(-320, 0));
+      await tester.pumpAndSettle();
+
+      expect(_indicatorWidth(tester, 0), _selectedIndicatorRenderWidth);
+      expect(_indicatorWidth(tester, 1), _unselectedIndicatorRenderWidth);
+    });
+
+    testWidgets('single recommendation does not auto play', (tester) async {
+      await tester.pumpWidget(
+        _buildDiscoverPage(<DiscoverDailyRecommendationEntry>[
+          _recommendation('1', 'Author 1', 'Comic 1'),
+        ]),
+      );
+
+      expect(_indicatorWidth(tester, 0), _selectedIndicatorRenderWidth);
+
+      await tester.pump(const Duration(seconds: 6));
+      await tester.pump();
+
+      expect(_indicatorWidth(tester, 0), _selectedIndicatorRenderWidth);
+    });
+
+    testWidgets(
+      'wide layouts keep the preview card adjacent to the hero card',
+      (tester) async {
+        tester.view.physicalSize = const Size(1440, 900);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final recommendations = <DiscoverDailyRecommendationEntry>[
+          _recommendation('1', 'Author 1', 'Comic 1'),
+          _recommendation('2', 'Author 2', 'Comic 2'),
+          _recommendation('3', 'Author 3', 'Comic 3'),
+        ];
+
+        await tester.pumpWidget(_buildDiscoverPage(recommendations));
+        await tester.pump();
+
+        final heroCardFinder = find.byKey(
+          const ValueKey('discover_daily_recommendation_card_2'),
+        );
+        final previewCardFinder = find.byKey(
+          const ValueKey('discover_daily_recommendation_card_3'),
+        );
+
+        final heroCardRect = tester.getRect(heroCardFinder);
+        final previewCardRect = tester.getRect(previewCardFinder);
+
+        expect(heroCardRect.width, 300);
+        expect(previewCardRect.left - heroCardRect.right, closeTo(8, 0.5));
+      },
+    );
+
+    testWidgets('tapping recommendation still opens comic detail path', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _buildDiscoverPage(<DiscoverDailyRecommendationEntry>[
+          _recommendation('1', 'Author 1', 'Comic 1'),
+        ]),
+      );
+
+      await tester.tap(find.text('Comic 1'));
+      await tester.pumpAndSettle();
+
+      if (useWindowsComicDetailPanel) {
+        expect(WindowsComicDetailController.instance.entry?.comic.id, '1');
+      } else {
+        expect(find.text('detail:1'), findsOneWidget);
+      }
+    });
+
+    testWidgets('windows overlay reappears after closing detail panel', (
+      tester,
+    ) async {
+      if (!useWindowsComicDetailPanel) {
+        return;
+      }
+
+      await tester.pumpWidget(
+        _buildDiscoverPage(<DiscoverDailyRecommendationEntry>[
+          _recommendation('1', 'Author 1', 'Comic 1'),
+        ]),
+      );
+
+      final overlayFinder = find.byKey(
+        const ValueKey(
+          'discover_daily_recommendation_overlay_comic-cover-1-discover-daily-0_0',
+        ),
+      );
+
+      expect(
+        tester.widget<AnimatedOpacity>(overlayFinder).opacity,
+        equals(1.0),
+      );
+
+      await tester.tap(find.text('Comic 1'));
+      await tester.pump();
+
+      expect(
+        tester.widget<AnimatedOpacity>(overlayFinder).opacity,
+        equals(0.0),
+      );
+
+      WindowsComicDetailController.instance.close();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(
+        tester.widget<AnimatedOpacity>(overlayFinder).opacity,
+        equals(1.0),
+      );
+    });
+  });
+}
+
+Widget _buildDiscoverPage(
+  List<DiscoverDailyRecommendationEntry> recommendations, {
+  Future<void> Function()? onRequestLogin,
+  DiscoverSectionLayout layout = DiscoverSectionLayout.horizontal,
+}) {
+  return MaterialApp(
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: Scaffold(
+      body: DiscoverPage(
+        discoverSectionLayout: layout,
+        sourceService: sl<SourceDiscoverGateway>(),
+        recommendationSource: sl<SourceRecommendationGateway>(),
+        recommendationService: sl<DiscoverDailyRecommendationService>(),
+        comicDetailPageBuilder: (comic, heroTag) =>
+            Scaffold(body: Center(child: Text('detail:${comic.id}'))),
+        usePinnedSearchInAppBar: true,
+        dailyRecommendationState: DiscoverDailyRecommendationState(
+          enabled: true,
+          displayedRecommendations: recommendations,
+        ),
+        allowInitialLoad: false,
+        hideLoadingUntilInitialLoadAllowed: true,
+        onRequestLogin: onRequestLogin,
+      ),
+    ),
+  );
+}
+
+DiscoverDailyRecommendationEntry _recommendation(
+  String id,
+  String author,
+  String title,
+) {
+  return DiscoverDailyRecommendationEntry(
+    author: author,
+    comic: ExploreComic(
+      id: id,
+      title: title,
+      subTitle: 'Subtitle $id',
+      cover: '',
+    ),
+  );
+}
+
+double _indicatorWidth(WidgetTester tester, int index) {
+  return tester
+      .getSize(
+        find.byKey(ValueKey('discover_daily_recommendation_indicator_$index')),
+      )
+      .width;
+}
+
+Future<void> _moveMouseAway(WidgetTester tester) async {
+  final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+  await gesture.addPointer(location: const Offset(1000, 1000));
+  await gesture.moveTo(const Offset(1000, 1000));
+  addTearDown(gesture.removePointer);
+  await tester.pump();
+}

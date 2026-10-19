@@ -1,0 +1,221 @@
+import 'dart:async';
+
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/material.dart';
+import 'package:hazuki/app/service_locator.dart';
+
+import '../../services/source/source_capabilities.dart';
+import 'source_runtime_widgets.dart';
+
+class SourceBootstrapState {
+  const SourceBootstrapState({
+    required this.showOverlay,
+    required this.showIntro,
+    required this.indeterminate,
+    required this.progress,
+    this.errorText,
+  });
+
+  const SourceBootstrapState.idle()
+    : this(
+        showOverlay: false,
+        showIntro: false,
+        indeterminate: true,
+        progress: 0,
+      );
+
+  final bool showOverlay;
+  final bool showIntro;
+  final bool indeterminate;
+  final double progress;
+  final String? errorText;
+
+  SourceBootstrapState copyWith({
+    bool? showOverlay,
+    bool? showIntro,
+    bool? indeterminate,
+    double? progress,
+    String? errorText,
+    bool clearErrorText = false,
+  }) {
+    return SourceBootstrapState(
+      showOverlay: showOverlay ?? this.showOverlay,
+      showIntro: showIntro ?? this.showIntro,
+      indeterminate: indeterminate ?? this.indeterminate,
+      progress: progress ?? this.progress,
+      errorText: clearErrorText ? null : (errorText ?? this.errorText),
+    );
+  }
+}
+
+class SourceRuntimeCoordinator {
+  SourceRuntimeCoordinator({
+    SourceBootstrapGateway? bootstrapGateway,
+    SourceUpdateGateway? updateGateway,
+  }) : _bootstrapGateway = bootstrapGateway ?? sl<SourceBootstrapGateway>(),
+       _updateGateway = updateGateway ?? sl<SourceUpdateGateway>();
+
+  final SourceBootstrapGateway _bootstrapGateway;
+  final SourceUpdateGateway _updateGateway;
+  final Connectivity _connectivity = Connectivity();
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  bool _hasConnectivity = true;
+
+  Future<void> bootstrapSourceRuntime({
+    required bool Function() isMounted,
+    required void Function(SourceBootstrapState state) onBootstrapStateChanged,
+    required VoidCallback onSourceReady,
+    required VoidCallback scheduleSourceUpdateDialogCheck,
+  }) async {
+    await _bootstrapGateway.prepareSources();
+    if (!_bootstrapGateway.hasActiveSource) {
+      if (isMounted()) {
+        onBootstrapStateChanged(const SourceBootstrapState.idle());
+        onSourceReady();
+      }
+      return;
+    }
+    final hasLocalSource = await _bootstrapGateway.hasLocalJmSourceFile();
+    if (!isMounted()) {
+      return;
+    }
+
+    if (!hasLocalSource) {
+      var bootstrapSucceeded = false;
+      onBootstrapStateChanged(
+        const SourceBootstrapState(
+          showOverlay: false,
+          showIntro: true,
+          indeterminate: true,
+          progress: 0,
+        ),
+      );
+      unawaited(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 900));
+        if (!isMounted()) {
+          return;
+        }
+        onBootstrapStateChanged(
+          const SourceBootstrapState(
+            showOverlay: true,
+            showIntro: false,
+            indeterminate: true,
+            progress: 0,
+          ),
+        );
+      }());
+      try {
+        await _bootstrapGateway.init(
+          onProgress: (received, total) {
+            if (!isMounted()) {
+              return;
+            }
+            onBootstrapStateChanged(
+              SourceBootstrapState(
+                showOverlay: true,
+                showIntro: false,
+                indeterminate: total <= 0,
+                progress: total > 0 ? (received / total).clamp(0.0, 1.0) : 0,
+              ),
+            );
+          },
+        );
+        await _bootstrapGateway.ensureInitialized();
+        bootstrapSucceeded = true;
+      } catch (e) {
+        if (!isMounted()) {
+          return;
+        }
+        onBootstrapStateChanged(
+          SourceBootstrapState(
+            showOverlay: true,
+            showIntro: false,
+            indeterminate: false,
+            progress: 1,
+            errorText: '$e',
+          ),
+        );
+        await Future<void>.delayed(const Duration(seconds: 2));
+      }
+      if (!isMounted() || !bootstrapSucceeded) {
+        return;
+      }
+      onBootstrapStateChanged(const SourceBootstrapState.idle());
+      await Future<void>.delayed(const Duration(milliseconds: 280));
+      if (!isMounted()) {
+        return;
+      }
+      onSourceReady();
+      return;
+    }
+
+    if (!isMounted()) {
+      return;
+    }
+    onSourceReady();
+    scheduleSourceUpdateDialogCheck();
+  }
+
+  Future<void> initConnectivityWatcher({
+    required void Function() scheduleSourceRecovery,
+  }) async {
+    try {
+      final initial = await _connectivity.checkConnectivity();
+      _hasConnectivity = initial.any(
+        (result) => result != ConnectivityResult.none,
+      );
+    } catch (_) {
+      _hasConnectivity = true;
+    }
+
+    _connectivitySubscription = _connectivity.onConnectivityChanged.listen((
+      results,
+    ) {
+      final hasNetwork = results.any(
+        (result) => result != ConnectivityResult.none,
+      );
+      if (_hasConnectivity == hasNetwork) {
+        return;
+      }
+      _hasConnectivity = hasNetwork;
+      if (_hasConnectivity) {
+        scheduleSourceRecovery();
+      }
+    });
+  }
+
+  void scheduleSourceRecovery({
+    required bool Function() isMounted,
+    required VoidCallback scheduleSourceUpdateDialogCheck,
+  }) {
+    unawaited(
+      _runSourceRecovery(
+        isMounted: isMounted,
+        scheduleSourceUpdateDialogCheck: scheduleSourceUpdateDialogCheck,
+      ),
+    );
+  }
+
+  void scheduleSourceUpdateDialogCheck({
+    required bool Function() isMounted,
+    required Future<SourceUpdateDialogAction?> Function() showDialogIfNeeded,
+    required VoidCallback onSourceDownloaded,
+  }) {
+    // Updates are requested explicitly from plugin management.
+  }
+
+  Future<void> dispose() async {
+    await _connectivitySubscription?.cancel();
+  }
+
+  Future<void> _runSourceRecovery({
+    required bool Function() isMounted,
+    required VoidCallback scheduleSourceUpdateDialogCheck,
+  }) async {
+    final refreshed = await _updateGateway.refreshSourceOnNetworkRecovery();
+    if (!isMounted() || !refreshed) {
+      return;
+    }
+    scheduleSourceUpdateDialogCheck();
+  }
+}

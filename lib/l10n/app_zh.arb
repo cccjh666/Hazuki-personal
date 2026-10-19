@@ -1,0 +1,1567 @@
+{
+  "@@locale": "zh",
+  "appTitle": "Hazuki",
+  "settingsTitle": "设置",
+  "settingsCacheTitle": "存储",
+  "settingsCacheSubtitle": "本机存储相关设置",
+  "settingsDisplayTitle": "显示",
+  "settingsDisplaySubtitle": "软件界面与语言设置",
+  "settingsReadingTitle": "阅读",
+  "settingsReadingSubtitle": "阅读器设置",
+  "settingsPrivacyTitle": "隐私",
+  "settingsPrivacySubtitle": "隐私相关功能",
+  "settingsCloudSyncTitle": "云同步",
+  "settingsCloudSyncSubtitle": "上传与恢复备份",
+  "settingsOtherTitle": "其它",
+  "settingsOtherSubtitle": "查看补充设置选项",
+  "settingsLabTitle": "实验室",
+  "settingsLabSubtitle": "实验性功能",
+  "settingsAdvancedTitle": "高级",
+  "settingsAdvancedSubtitle": "调整更多设置",
+  "settingsAboutTitle": "关于",
+  "displayTitle": "显示",
+  "displayThemeTitle": "主题",
+  "displayThemeLight": "浅色",
+  "displayThemeDark": "深色",
+  "displayThemeSystem": "跟随系统",
+  "displayPresetMintGreen": "薄荷绿",
+  "displayPresetSeaSaltBlue": "海盐蓝",
+  "displayPresetTwilightPurple": "暮光紫",
+  "displayPresetCherryBlossomPink": "樱花粉",
+  "displayPresetCoralOrange": "珊瑚橙",
+  "displayPresetAmberYellow": "琥珀黄",
+  "displayPresetLimeGreen": "青柠绿",
+  "displayPresetGraphiteGray": "石墨灰",
+  "displayPresetBerryRed": "莓果红",
+  "displayLanguageTitle": "语言",
+  "displayLanguageSubtitle": "切换应用显示语言",
+  "displayLanguageSystem": "跟随系统",
+  "displayLanguageZhHans": "简体中文",
+  "displayLanguageEnglish": "English",
+  "displayRefreshRateTitle": "屏幕帧率",
+  "displayRefreshRateAuto": "自动",
+  "displayRefreshRateSpecified": "已指定模式（ID: {id}）",
+  "@displayRefreshRateSpecified": {
+    "placeholders": {
+      "id": {}
+    }
+  },
+  "displaySystemFontTitle": "使用系统字体",
+  "displaySystemFontSubtitle": "关闭后使用内置 Noto Sans SC 字体",
+  "displayPureBlackTitle": "纯黑模式",
+  "displayPureBlackSubtitle": "深色模式下使用纯黑背景",
+  "displayLiquidGlassTitle": "液态玻璃效果",
+  "displayLiquidGlassSubtitle": "关闭后全局使用旧版界面样式",
+  "displayDynamicColorTitle": "动态取色",
+  "displayDynamicColorSubtitle": "根据系统壁纸自动提取主题色（Android 12+）",
+  "displayComicDynamicColorTitle": "漫画详情页动态取色",
+  "displayComicDynamicColorSubtitle": "开启后根据漫画封面生成漫画详情页动态主题",
+  "displayColorSchemeTitle": "配色方案",
+  "displayDiscoverLayoutTitle": "发现页专栏排版",
+  "displayDiscoverLayoutHorizontal": "横向滑动",
+  "displayDiscoverLayoutList": "纵向列表",
+  "displayDiscoverLayoutGrid2": "2 格排版",
+  "displayDiscoverLayoutGrid3": "3 格排版",
+  "displayDiscoverLayoutAdaptiveWall": "自适应封面墙",
+  "displayFavoriteLayoutTitle": "收藏页排版",
+  "displayFavoriteLayoutList": "详细列表",
+  "displayFavoriteLayoutGrid3": "封面墙（三列）",
+  "displayFavoriteLayoutGrid2": "大封面（两列）",
+  "displayFavoriteLayoutCoverOnly": "纯封面（四列）",
+  "homeGuestUser": "未登录",
+  "sourceInstallRequired": "请先安装漫画源",
+  "homeFirstUseLoading": "首次使用时间加载中...",
+  "homeFirstUseUnknown": "首次使用本应用",
+  "homeFirstUseFormatted": "{date} 首次使用",
+  "@homeFirstUseFormatted": {
+    "placeholders": {
+      "date": {}
+    }
+  },
+  "homeLogoutTitle": "退出登录",
+  "homeLogoutContent": "确定要退出登录吗？",
+  "homeLoginTitle": "登录",
+  "homeLoginAccountLabel": "账号",
+  "homeLoginPasswordLabel": "密码",
+  "homeLoginHidePassword": "隐藏密码",
+  "homeLoginShowPassword": "显示密码",
+  "homeLoginEmptyError": "账号和密码不能为空",
+  "homeLoginSuccess": "登录成功",
+  "homeLoggedOut": "已退出登录",
+  "homeSaveAvatarTitle": "保存头像",
+  "homeSaveAvatarContent": "将当前头像保存到相册吗？",
+  "homeAvatarSaved": "头像已保存",
+  "homeAvatarSaveFailed": "头像保存失败：{error}",
+  "@homeAvatarSaveFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "homePressBackAgainToExit": "再按一次返回退出",
+  "homeSearchHint": "搜索漫画",
+  "homeSortTooltip": "排序",
+  "homeFavoriteSortByFavoriteTime": "收藏时间",
+  "homeFavoriteSortByUpdateTime": "更新时间",
+  "homeFavoriteSortByReadTime": "阅读时间",
+  "homeCreateFavoriteFolder": "新建收藏夹",
+  "homeMenuHistory": "历史记录",
+  "homeMenuCategories": "标签分类",
+  "homeMenuRanking": "排行榜",
+  "homeMenuDownloads": "下载",
+  "homeMenuLines": "线路",
+  "homeCheckInAction": "签到",
+  "homeCheckInDone": "今日已签到",
+  "homeCheckInInProgress": "签到中...",
+  "homeCheckInSuccess": "签到成功",
+  "homeCheckInAlreadyDone": "今天已经签到过了",
+  "homeCheckInFailed": "签到失败：{error}",
+  "@homeCheckInFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "homeTabDiscover": "发现",
+  "homeTabFavorite": "收藏",
+  "otherChineseConversionTitle": "简繁转换",
+  "otherChineseConversionSubtitle": "转换漫画标题、简介和评论的显示文字",
+  "otherChineseConversionOff": "关闭",
+  "otherChineseConversionTraditional": "繁体中文",
+  "otherChineseConversionSimplified": "简体中文",
+  "otherChineseConversionFailed": "简繁转换设置失败，请重试",
+  "otherTitle": "其它",
+  "otherAutoCheckInTitle": "自动签到",
+  "otherAutoCheckInSubtitle": "开启后，每天打开软件时会自动触发一次签到",
+  "otherAutoSourceUpdateTitle": "自动检查漫画源更新",
+  "otherAutoSourceUpdateSubtitle": "每次启动软件时检查一次漫画源更新",
+  "otherAutoUpdateUpdated": "已更新漫画源检查更新设置",
+  "otherAutoSoftwareUpdateTitle": "自动检查软件更新",
+  "otherAutoSoftwareUpdateSubtitle": "每次启动软件时检查一次软件新版本",
+  "otherAutoSoftwareUpdateUpdated": "已更新软件检查更新设置",
+  "otherDiscoverDailyRecommendationTitle": "发现页每日推荐",
+  "otherDiscoverDailyRecommendationSubtitle": "发现页将以轮播图形式随机推荐 7 部漫画",
+  "otherUseSystemTitleBarTitle": "使用系统标题栏",
+  "otherUseSystemTitleBarSubtitle": "开启后恢复 Windows 原生标题栏，关闭时使用应用自定义标题栏",
+  "otherMangaDownloadPathTitle": "漫画下载保存路径",
+  "otherMangaDownloadPathDialogTitle": "设置漫画下载保存路径",
+  "otherMangaDownloadPathDialogHelper": "请输入绝对路径，例如 /storage/emulated/0/Download/Hazuki_Manga",
+  "otherMangaDownloadPathInputLabel": "保存路径",
+  "otherMangaDownloadPathReset": "恢复默认",
+  "otherMangaDownloadPathInvalid": "请输入以 / 开头的绝对路径",
+  "otherMangaDownloadPathSaved": "漫画下载保存路径已更新",
+  "otherMangaDownloadPathPickFailed": "选择保存目录失败：{error}",
+  "@otherMangaDownloadPathPickFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "otherCommentFilterTitle": "评论过滤",
+  "otherCommentFilterSubtitle": "过滤你不想看到的内容",
+  "otherCopyMangaImageQualityTitle": "拷贝漫画图片质量",
+  "otherCopyMangaImageQualitySubtitle": "用于后续章节图片地址",
+  "otherCopyMangaImageQualityLow": "低（800）",
+  "otherCopyMangaImageQualityMedium": "中（1200）",
+  "otherCopyMangaImageQualityHigh": "高（1500）",
+  "commentFilterDialogTitle": "评论过滤",
+  "commentFilterModeLabel": "过滤方式",
+  "commentFilterModeCollapse": "折叠",
+  "commentFilterModeHide": "隐藏",
+  "commentFilterUserKeywordsLabel": "自定义屏蔽词",
+  "commentFilterAddHint": "输入屏蔽词后按回车添加",
+  "commentFilterEmptyKeywordError": "请先输入关键词",
+  "commentFilterNoUserKeywords": "暂无自定义屏蔽词",
+  "commentFilterPreviewHint": "点击上方区域查看或编辑完整列表",
+  "commentFilterEditKeywordTitle": "编辑关键词",
+  "commentFilterRemoveKeywordTitle": "删除关键词",
+  "commentFilterRemoveKeywordMessage": "确定从屏蔽词列表中删除“{keyword}”吗？",
+  "@commentFilterRemoveKeywordMessage": {
+    "placeholders": {
+      "keyword": {}
+    }
+  },
+  "commentFilterRemoveKeywordAction": "删除",
+  "commentFilterBackTooltip": "返回",
+  "commentFilterKeywordListTitle": "已添加的关键词",
+  "commentFilterCollapseKeywordList": "收起",
+  "commentFilterExpandKeywordList": "展开全部 {count} 个",
+  "@commentFilterExpandKeywordList": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "commentFilteredCollapsedLabel": "此评论已被过滤",
+  "commentFilteredExpandLabel": "点击展开",
+  "commentFilterHiddenBanner": "已隐藏 {count} 条评论",
+  "@commentFilterHiddenBanner": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "sourceBootstrapDownloading": "正在下载漫画源",
+  "sourceBootstrapPreparing": "正在准备源文件...",
+  "sourceBootstrapProgress": "已下载 {progress}%",
+  "@sourceBootstrapProgress": {
+    "placeholders": {
+      "progress": {}
+    }
+  },
+  "dialogBarrierLabel": "对话框",
+  "windowsAdaptationNoticeTitle": "提示",
+  "windowsAdaptationNoticeMessage": "Windows 版本目前仍在适配中，部分功能和交互体验可能还不够完善。后续会继续优化。",
+  "windowsAdaptationNoticeAccept": "知道了",
+  "aboutTitle": "关于",
+  "aboutVersion": "版本 {version}",
+  "@aboutVersion": {
+    "placeholders": {
+      "version": {}
+    }
+  },
+  "aboutDescription": "开源漫画阅读客户端",
+  "aboutCommunityTitle": "参与项目",
+  "aboutLegalTitle": "使用与许可",
+  "aboutProjectTitle": "项目地址",
+  "aboutProjectSubtitle": "GitHub (https://github.com/LuckyLxi/Hazuki)",
+  "aboutCheckUpdateTitle": "检查更新",
+  "aboutCheckSoftwareUpdateSubtitle": "手动检查是否有新的软件版本",
+  "softwareUpdateAvailableTitle": "软件有更新",
+  "softwareUpdateAvailableMessage": "检测到新的软件版本，可前往发布页下载更新。",
+  "softwareUpdateCurrentVersion": "当前版本：{version}",
+  "@softwareUpdateCurrentVersion": {
+    "placeholders": {
+      "version": {}
+    }
+  },
+  "softwareUpdateLatestVersion": "最新版本：{version}",
+  "@softwareUpdateLatestVersion": {
+    "placeholders": {
+      "version": {}
+    }
+  },
+  "softwareUpdateChangelogTitle": "更新内容",
+  "softwareUpdateOpenRelease": "前往发布页",
+  "softwareUpdateViewDetails": "查看详情",
+  "softwareUpdateDownloadAction": "下载",
+  "softwareUpdateDownloadingTitle": "正在下载",
+  "softwareUpdateBackgroundDownload": "后台下载",
+  "softwareUpdateDownloadUnavailable": "暂时没有可下载的安装包",
+  "softwareUpdateDownloadedFileInvalid": "下载的安装包无效",
+  "softwareUpdateDownloadFailed": "下载更新失败：{error}",
+  "@softwareUpdateDownloadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "softwareUpdateInstallerLaunchFailed": "下载完成，但无法拉起安装器",
+  "softwareUpdateAlreadyLatest": "当前已经是最新软件版本",
+  "softwareUpdateCheckFailed": "暂时无法检查软件更新，请稍后再试",
+  "softwareUpdateDownloadSuccessZipMessage": "ZIP 安装包已下载至系统下载文件夹",
+  "softwareUpdateOpenFolder": "打开文件夹",
+  "aboutFeedbackTitle": "反馈问题",
+  "aboutFeedbackSubtitle": "如果在阅读中遇到任何问题，欢迎反馈",
+  "aboutOpenLinkFailed": "无法打开链接",
+  "aboutOpenFeedbackFailed": "无法打开反馈链接",
+  "aboutDisclaimerTitle": "免责声明",
+  "aboutDisclaimerSubtitle": "使用前请先阅读相关说明",
+  "aboutDisclaimerContent": "Hazuki 是以 GPL-3.0 许可证发布的免费开源漫画阅读客户端。软件的使用、修改和分发须遵守该许可证。\n\nHazuki 通过漫画源插件访问第三方平台，不提供或运营漫画内容服务。漫画、图片及相关资料的权利归各自权利人所有；软件的开源许可证不授予这些内容的使用权。Hazuki 与所接入的第三方平台不存在隶属、合作或授权关系。\n\n请遵守所在地法律法规及相关平台的服务条款，在获得合法授权的范围内阅读、下载和使用内容，不得利用本软件侵犯他人权利。请支持作者及正版作品。\n\n第三方内容可能包含成人或其他不适宜未成年人观看的材料。未达到所在地法定成年年龄的用户请勿使用本软件；成年用户也应遵守当地对相关内容的访问限制。\n\n漫画源插件、内容及服务由第三方提供，其安全性、准确性和持续可用性不由 Hazuki 控制。请谨慎选择插件来源，妥善保管账号信息，并备份重要数据。\n\n本软件按现状提供。在适用法律允许的范围内，开发者不对软件的适用性、稳定性或无错误运行作出保证，也不对使用本软件造成的损失承担责任。具体无担保和责任限制条款以 GPL-3.0 许可证为准；依法不得排除或限制的责任不受本声明影响。",
+  "sourceLoginImageLoadFailed": "验证码图片无法显示，请刷新后重试。",
+  "sourceBrowserAuthorization": "浏览器授权",
+  "sourceBrowserInstallWebView2": "请安装 Microsoft Edge WebView2 运行时后使用浏览器授权。",
+  "sourceBrowserUpdateWebView": "请更新 Android System WebView 后使用隔离的浏览器授权。",
+  "sourceBrowserUnavailable": "此设备暂时无法使用浏览器授权。",
+  "sourceBrowserOpenHelp": "打开安装页面",
+  "sourceLoginRefresh": "刷新验证码",
+  "sourceLoginUndoPoint": "撤销上一个点",
+  "commonConfirm": "确定",
+  "commonCancel": "取消",
+  "commonClose": "关闭",
+  "commonSave": "保存",
+  "commonSelectAll": "全选",
+  "commonDeselectAll": "取消全选",
+  "commonLoading": "加载中...",
+  "commonRetry": "重试",
+  "comicDetailRecoveryTimedOut": "恢复漫画源耗时较长，请点击重试。",
+  "searchTitle": "搜索",
+  "searchHint": "搜索漫画",
+  "searchSettingsTitle": "搜索设置",
+  "searchAggregateSearch": "聚合搜索",
+  "searchAggregateSearchDescription": "同时搜索所有漫画源",
+  "searchResultLayout": "结果排列",
+  "searchLayoutList": "纵向列表",
+  "searchLayoutGrid3": "3 格排列",
+  "searchHistoryTitle": "搜索历史",
+  "searchHistoryCopied": "已复制搜索历史",
+  "searchClearTooltip": "清空",
+  "searchSubmitTooltip": "搜索",
+  "searchClearHistoryTitle": "清空历史记录",
+  "searchClearHistoryContent": "你确定要清空所有搜索记录吗？",
+  "historyTitle": "历史记录",
+  "historyEmpty": "暂无历史记录",
+  "historySelectionCancelTooltip": "取消多选",
+  "historySelectionEnterTooltip": "多选",
+  "historyDeleteSelectedTooltip": "删除选中的历史",
+  "historyDeleteSelectionRequired": "请先选择要删除的漫画",
+  "historyClearAllTooltip": "清空所有历史",
+  "historyDeleteSelectedTitle": "删除历史记录",
+  "historyDeleteSelectedContent": "你确定要删除选中的{count}部漫画历史记录吗？",
+  "@historyDeleteSelectedContent": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "historyClearAllTitle": "清空历史记录",
+  "historyClearAllContent": "你确定要清空所有历史记录吗？此操作不可恢复。",
+  "historyCopiedComicId": "已复制漫画ID",
+  "historyLoginRequired": "请先登录",
+  "historyFavoriteProcessing": "正在处理收藏...",
+  "historyFavoriteFolderNotice": "多收藏夹请在漫画详情页内操作，正在执行默认操作...",
+  "historyFavoriteRemoved": "已取消收藏",
+  "historyFavoriteAdded": "已添加收藏",
+  "historyFavoriteFailed": "收藏操作失败: {error}",
+  "@historyFavoriteFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "historyMenuCopyComicId": "复制漫画ID",
+  "historyMenuToggleFavorite": "收藏/取消收藏",
+  "historyMenuDeleteItem": "删除此记录",
+  "discoverLoadTimeout": "发现页加载超时，请下拉重试",
+  "discoverLoadFailed": "发现页加载失败：{error}",
+  "@discoverLoadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "discoverEmpty": "当前漫画源暂无发现页内容",
+  "discoverLoginRequired": "请先登录账号",
+  "discoverMore": "查看更多",
+  "aboutThirdPartyLicensesTitle": "第三方库许可",
+  "aboutThirdPartyLicensesSubtitle": "查看本应用使用的开源库",
+  "searchOrderLatest": "最新",
+  "searchOrderTotalRanking": "总排行",
+  "searchOrderMonthlyRanking": "月排行",
+  "searchOrderWeeklyRanking": "周排行",
+  "searchOrderDailyRanking": "日排行",
+  "searchOrderMostImages": "最多图片",
+  "searchOrderMostLikes": "最多喜欢",
+  "searchTimeout": "搜索超时，请稍后重试",
+  "searchFailed": "搜索失败：{error}",
+  "@searchFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "searchIdExtractHint": "提取到：{id}",
+  "@searchIdExtractHint": {
+    "placeholders": {
+      "id": {}
+    }
+  },
+  "searchStartPrompt": "输入关键词开始搜索",
+  "searchLoading": "正在搜索...",
+  "searchEmpty": "什么也没搜到",
+  "searchSortTooltip": "排序",
+  "comicDetailBackToHome": "返回主页",
+  "comicDetailFavoriteAdded": "已加入收藏",
+  "comicDetailFavoriteRemoved": "已取消收藏",
+  "comicDetailFavoriteActionFailed": "收藏操作失败：{error}",
+  "@comicDetailFavoriteActionFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "comicDetailManageFavorites": "管理收藏",
+  "comicDetailCreateFavoriteFolder": "新增收藏夹",
+  "comicDetailFavoriteFolderNameHint": "请输入收藏夹名称",
+  "comicDetailFavoriteFolderNameRequired": "收藏夹名称不能为空",
+  "comicDetailCreateFavoriteFolderFailed": "创建收藏夹失败：{error}",
+  "@comicDetailCreateFavoriteFolderFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "comicDetailDeleteFavoriteFolder": "删除收藏夹",
+  "comicDetailDeleteFavoriteFolderContent": "删除这个收藏夹吗？位于该收藏夹中的漫画将失去分组。",
+  "comicDetailDelete": "删除",
+  "comicDetailDeleteFavoriteFolderFailed": "删除收藏夹失败：{error}",
+  "@comicDetailDeleteFavoriteFolderFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "comicDetailFavoriteFoldersLoadFailed": "加载收藏夹失败：{error}",
+  "@comicDetailFavoriteFoldersLoadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "comicDetailNoFavoriteFolders": "暂无收藏夹",
+  "comicDetailDeleteFavoriteFolderTooltip": "删除收藏夹",
+  "comicDetailCreateFavoriteFolderTooltip": "新建收藏夹",
+  "comicDetailSingleFolderHint": "当前漫画源仅支持将该漫画加入一个收藏夹",
+  "comicDetailMultipleFoldersHint": "可为该漫画选择多个收藏夹",
+  "comicDetailSelectAtLeastOneFolder": "请至少选择一个收藏夹",
+  "comicDetailFavoriteSettingsUpdated": "收藏设置已更新",
+  "comicDetailFavoriteSettingsUpdateFailed": "更新收藏失败：{error}",
+  "@comicDetailFavoriteSettingsUpdateFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "comicDetailNoChapterInfo": "暂无章节信息",
+  "comicDetailNoChapters": "当前漫画暂无章节",
+  "comicDetailAuthor": "作者",
+  "comicDetailCategories": "分类",
+  "comicDetailTags": "标签",
+  "comicDetailUploader": "上传者",
+  "comicDetailChineseTeam": "汉化组",
+  "comicDetailCopiedId": "已复制 ID",
+  "comicDetailCopiedPrefix": "已复制：{value}",
+  "@comicDetailCopiedPrefix": {
+    "placeholders": {
+      "value": {}
+    }
+  },
+  "comicDetailSavedToPath": "已保存",
+  "comicDetailSaveFailed": "保存失败：{error}",
+  "@comicDetailSaveFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "comicDetailLoading": "加载中...",
+  "comicDetailSummary": "简介",
+  "comicDetailNoRelatedComics": "暂无相关漫画",
+  "comicDetailCollapse": "收起",
+  "comicDetailExpand": "展开",
+  "comicDetailUpdatedAt": "漫画更新时间：{time}",
+  "@comicDetailUpdatedAt": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "comicDetailTitle": "漫画详情",
+  "comicDetailTabInfo": "详情",
+  "comicDetailTabComments": "评论",
+  "comicDetailTabRelated": "相关",
+  "comicDetailChapters": "章节",
+  "comicDetailDefaultChapterTitle": "第1话",
+  "comicDetailChapterCount": "共 {count} 话",
+  "@comicDetailChapterCount": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "comicDetailLikesCount": "{count}点赞",
+  "@comicDetailLikesCount": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "comicDetailViewsCount": "{count}浏览量",
+  "@comicDetailViewsCount": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "comicDetailPagesCount": "{count}页",
+  "@comicDetailPagesCount": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "comicDetailLike": "点赞",
+  "comicDetailUnlike": "取消点赞",
+  "comicDetailLiked": "已点赞",
+  "comicDetailUnliked": "已取消点赞",
+  "comicDetailLikeActionFailed": "点赞操作失败：{error}",
+  "@comicDetailLikeActionFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "comicDetailFavorite": "收藏",
+  "comicDetailUnfavorite": "取消收藏",
+  "comicDetailRead": "阅读",
+  "comicDetailContinueReading": "继续阅读 {title}",
+  "@comicDetailContinueReading": {
+    "placeholders": {
+      "title": {}
+    }
+  },
+  "comicDetailSaveImage": "保存图片",
+  "comicDetailRemindLaterToday": "今日不再提醒",
+  "sourceUpdateAvailableTitle": "漫画源有更新",
+  "sourceUpdateDiscoveredVersion": "发现新版本 {version}",
+  "@sourceUpdateDiscoveredVersion": {
+    "placeholders": {
+      "version": {}
+    }
+  },
+  "sourceUpdateLocalVersion": "本地漫画源版本号：{version}",
+  "@sourceUpdateLocalVersion": {
+    "placeholders": {
+      "version": {}
+    }
+  },
+  "sourceUpdateRemoteVersion": "云端漫画源版本号：{version}",
+  "@sourceUpdateRemoteVersion": {
+    "placeholders": {
+      "version": {}
+    }
+  },
+  "sourceUpdateDownloading": "下载中...",
+  "sourceUpdateDownloadingProgress": "下载中 {progress}%",
+  "@sourceUpdateDownloadingProgress": {
+    "placeholders": {
+      "progress": {}
+    }
+  },
+  "sourceUpdateDownloadFailed": "下载失败，请稍后重试",
+  "sourceUpdateDownload": "下载",
+  "readingSettingsTitle": "阅读设置",
+  "readingModeTitle": "阅读模式",
+  "readingModeSubtitle": "选择阅读器中的浏览方式",
+  "readingModeTopToBottom": "纵向滚动",
+  "readingModeRightToLeft": "横向翻页",
+  "readingDoublePageModeTitle": "双页模式",
+  "readingDoublePageModeSubtitle": "开启后每次同时显示两张图片，纵向滚动与横向翻页都生效",
+  "readingTapToTurnPageTitle": "点击翻页",
+  "readingTapToTurnPageSubtitle": "仅在横向翻页模式下生效，点击左侧回到上一页，点击右侧前往下一页",
+  "readingVolumeButtonTurnPageTitle": "音量键翻页",
+  "readingVolumeButtonTurnPageSubtitle": "开启后，上音量键为上一页，下音量键为下一页，两种阅读模式都生效",
+  "readingImmersiveModeTitle": "沉浸模式",
+  "readingImmersiveModeSubtitle": "开启后进入阅读器自动隐藏状态栏和底部导航栏",
+  "readingKeepScreenOnTitle": "屏幕常亮",
+  "readingKeepScreenOnSubtitle": "开启后阅读时保持屏幕常亮，不自动锁屏",
+  "readingCustomBrightnessTitle": "自定义亮度",
+  "readingCustomBrightnessSubtitle": "开启后可在阅读器内按此设置覆盖系统亮度",
+  "readingBrightnessLabel": "亮度 {value}",
+  "@readingBrightnessLabel": {
+    "placeholders": {
+      "value": {}
+    }
+  },
+  "readingFilterTitle": "阅读滤镜",
+  "readingFilterSubtitle": "在漫画图片上覆盖黄色或黑色滤镜",
+  "readingFilterColorYellow": "黄色",
+  "readingFilterColorBlack": "黑色",
+  "readingFilterStrengthLabel": "滤镜强度 {value}%",
+  "@readingFilterStrengthLabel": {
+    "placeholders": {
+      "value": {}
+    }
+  },
+  "readingPageIndicatorTitle": "页数指示器",
+  "readingPageIndicatorSubtitle": "在阅读器左下角显示第几话与当前页数/总页数",
+  "readingPinchToZoomTitle": "双指缩放",
+  "readingPinchToZoomSubtitle": "启用后可双指捏合对漫画图片进行放大查看",
+  "readingLongPressSaveTitle": "长按保存图片",
+  "readingLongPressSaveSubtitle": "启用后长按漫画图片可保存该图片",
+  "readerWindowsShortcutsTitle": "Windows 阅读器快捷键",
+  "readerWindowsShortcutsIntro": "阅读时可以使用以下键盘和鼠标快捷键：",
+  "readerWindowsShortcutsZoom": "按住 Alt 并滚动鼠标滚轮以放大或缩小",
+  "readerWindowsShortcutsVerticalPaging": "纵向滚动模式下切换上一页或下一页",
+  "readerWindowsShortcutsHorizontalPaging": "横向翻页模式下切换上一页或下一页",
+  "readerWindowsShortcutsChapterPaging": "切换上一章或下一章",
+  "readerWindowsShortcutsReopenHint": "可在“阅读设置 → 查看 Windows 快捷键”中重新打开本指南。",
+  "readerWindowsShortcutsOpenTitle": "查看 Windows 快捷键",
+  "readerWindowsShortcutsOpenSubtitle": "重新查看阅读器的键盘和鼠标操作",
+  "downloadsTitle": "下载",
+  "downloadsTabOngoing": "正在下载",
+  "downloadsTabDownloaded": "已下载",
+  "downloadsEmptyOngoing": "暂无下载任务",
+  "downloadsEmptyDownloaded": "还没有已下载漫画",
+  "downloadsSelectionTitle": "已选择 {count} 项",
+  "@downloadsSelectionTitle": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "downloadsDeleteSelectedTitle": "删除已下载漫画",
+  "downloadsDeleteSelectedContent": "确定删除选中的 {count} 部已下载漫画吗？",
+  "@downloadsDeleteSelectedContent": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "downloadsStatusQueued": "等待中",
+  "downloadsStatusDownloading": "下载中",
+  "downloadsStatusPaused": "已暂停",
+  "downloadsStatusFailed": "失败：{error}",
+  "@downloadsStatusFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "downloadsChapterCount": "共 {count} 话",
+  "@downloadsChapterCount": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "downloadsCurrentProgress": "{current}/{total} 张图片",
+  "@downloadsCurrentProgress": {
+    "placeholders": {
+      "current": {},
+      "total": {}
+    }
+  },
+  "downloadsActionSelect": "选择",
+  "downloadsActionPause": "暂停",
+  "downloadsActionResume": "继续",
+  "downloadsActionPauseAll": "全部暂停",
+  "downloadsActionResumeAll": "全部开始",
+  "downloadsAllTasksPaused": "已暂停所有下载任务",
+  "downloadsAllTasksResumed": "已开始所有下载任务",
+  "downloadsNoTasks": "暂无下载任务",
+  "downloadsQueued": "已加入 {count} 话到下载队列",
+  "@downloadsQueued": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "downloadsAlreadyInQueue": "该漫画已经在下载任务中",
+  "downloadsDownloadChaptersTitle": "下载章节",
+  "downloadsDownloadChaptersSubtitle": "选择要下载的章节",
+  "downloadsDownloadAction": "下载",
+  "downloadsDuplicateDialogTitle": "本地已有下载",
+  "downloadsDuplicateDialogContent": "《{comicTitle}》已有 {count} 个所选章节/话存在于本地：\n\n{chapters}\n\n是否重复下载？",
+  "@downloadsDuplicateDialogContent": {
+    "placeholders": {
+      "comicTitle": {},
+      "count": {
+        "type": "int"
+      },
+      "chapters": {}
+    }
+  },
+  "downloadsDuplicateDownloadAction": "重复下载",
+  "downloadsSkipDownloadedDialogTitle": "跳过已下载章节/话？",
+  "downloadsSkipDownloadedDialogContent": "所选内容中有 {count} 个章节/话已下载，是否跳过它们，仅下载未下载的章节/话？",
+  "@downloadsSkipDownloadedDialogContent": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadsDoNotSkipAction": "否",
+  "downloadsSkipDownloadedAction": "跳过",
+  "downloadsQueueFailed": "无法加入下载队列：{error}",
+  "@downloadsQueueFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "privacySettingsTitle": "隐私设置",
+  "privacyBlurTaskTitle": "模糊任务栏应用页面",
+  "privacyBlurTaskSubtitle": "切到近期任务时任务卡片显示为纯黑",
+  "privacyBiometricUnlockTitle": "生物认证解锁",
+  "privacyBiometricUnlockSubtitle": "每次进入软件需验证指纹",
+  "privacyAuthOnResumeTitle": "退出软件需重新验证",
+  "privacyAuthOnResumeSubtitle": "即使应用在后台，只要不在前台，再次打开便需要重新认证",
+  "privacyPasswordLockTitle": "密码锁",
+  "privacyPasswordLockEnabledSubtitle": "已设置，点击可关闭密码锁",
+  "privacyPasswordLockDisabledSubtitle": "使用四位数字密码保护软件",
+  "privacyPasswordLockIntroTitle": "为软件添加四位数字密码",
+  "privacyPasswordLockIntroSubtitle": "启用后，进入软件前需要先输入密码；如果开启了生物认证，也可以在密码键盘页使用指纹解锁。",
+  "privacyPasswordLockEnableAction": "启用密码锁",
+  "privacyPasswordLockSetupInstruction": "输入四位数字作为软件密码",
+  "privacyPasswordLockEnableFailed": "启用密码锁失败：{error}",
+  "@privacyPasswordLockEnableFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "privacyPasswordLockDisableTitle": "关闭密码锁？",
+  "privacyPasswordLockDisableContent": "关闭后，下次启动软件将不再需要输入四位数字密码。",
+  "passwordLockUnlockTitle": "输入密码",
+  "passwordLockUnlockSubtitle": "请输入四位软件密码后继续",
+  "passwordLockWrongPin": "密码错误，还剩 {remaining} 次机会",
+  "@passwordLockWrongPin": {
+    "placeholders": {
+      "remaining": {}
+    }
+  },
+  "passwordLockLockedForMinutes": "输错次数过多，请 5 分钟后再试",
+  "passwordLockCountdown": "已锁定，请在 {time} 后重试",
+  "@passwordLockCountdown": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "passwordLockBiometricFailed": "生物认证失败",
+  "lineSettingsTitle": "线路",
+  "lineLoadFailed": "线路信息加载失败: {error}",
+  "@lineLoadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "lineOptionLabel": "线路 {value}",
+  "@lineOptionLabel": {
+    "placeholders": {
+      "value": {}
+    }
+  },
+  "lineOptionWithHostLabel": "线路 {value}（{host}）",
+  "@lineOptionWithHostLabel": {
+    "placeholders": {
+      "value": {},
+      "host": {}
+    }
+  },
+  "lineImageStreamLabel": "分流 {value}",
+  "@lineImageStreamLabel": {
+    "placeholders": {
+      "value": {}
+    }
+  },
+  "lineApiSwitched": "API 域名分流已切到线路 {value}",
+  "@lineApiSwitched": {
+    "placeholders": {
+      "value": {}
+    }
+  },
+  "lineImageSwitched": "图片域名分流已切到分流 {value}",
+  "@lineImageSwitched": {
+    "placeholders": {
+      "value": {}
+    }
+  },
+  "lineSwitchFailed": "切换失败: {error}",
+  "@lineSwitchFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "lineRefreshOnStartUpdated": "已更新启动自动刷新设置",
+  "lineSaveFailed": "保存失败: {error}",
+  "@lineSaveFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "lineIntro": "你可以分别切换 API 与图片分流，切换后会自动应用到后续请求。",
+  "lineApiTitle": "API 域名分流",
+  "lineApiSubtitle": "用于接口请求，建议网络异常时切换",
+  "lineSelectApiLabel": "选择 API 线路",
+  "lineImageTitle": "图片域名分流",
+  "lineImageHostUnavailable": "当前未获取到图片域名",
+  "lineImageHostCurrent": "当前域名：{host}",
+  "@lineImageHostCurrent": {
+    "placeholders": {
+      "host": {}
+    }
+  },
+  "lineSelectImageLabel": "选择图片分流",
+  "lineRefreshOnStartTitle": "启动时刷新域名列表",
+  "lineRefreshOnStartSubtitle": "每次打开应用时自动更新 API 域名池",
+  "lineRefreshStatusButton": "刷新线路状态",
+  "lineCopyMangaIntro": "当前为拷贝漫画源，可以切换访问线路并调整 API 地址。",
+  "lineCopyMangaRegionTitle": "拷贝漫画线路",
+  "lineCopyMangaRegionSubtitle": "用于拷贝漫画接口请求的区域线路",
+  "lineCopyMangaRegionLabel": "选择线路",
+  "lineCopyMangaRegionMainland": "大陆线路",
+  "lineCopyMangaRegionOverseas": "海外线路",
+  "lineCopyMangaSearchApiTitle": "搜索方式",
+  "lineCopyMangaSearchApiSubtitle": "切换拷贝漫画搜索接口",
+  "lineCopyMangaSearchApiLabel": "选择搜索方式",
+  "lineCopyMangaSearchApiBase": "基础 API",
+  "lineCopyMangaSearchApiWeb": "网页端 API",
+  "lineCopyMangaBaseUrlTitle": "API 地址",
+  "lineCopyMangaBaseUrlLabel": "API 域名",
+  "lineCopyMangaUpdated": "拷贝漫画线路设置已更新",
+  "linePicacgIntro": "当前为哔咔漫画源，可以调整 API 地址、图片质量与分流。",
+  "linePicacgImageQualityTitle": "图片质量",
+  "linePicacgImageQualitySubtitle": "用于哔咔图片请求的质量参数",
+  "linePicacgImageQualityLabel": "选择图片质量",
+  "linePicacgImageQualityOriginal": "原图",
+  "linePicacgImageQualityMedium": "中等",
+  "linePicacgImageQualityLow": "低",
+  "linePicacgAppChannelTitle": "分流",
+  "linePicacgAppChannelSubtitle": "用于哔咔接口请求的 app-channel",
+  "linePicacgAppChannelSelectLabel": "选择分流",
+  "linePicacgAppChannelLabel": "分流 {value}",
+  "@linePicacgAppChannelLabel": {
+    "placeholders": {
+      "value": {}
+    }
+  },
+  "linePicacgBaseUrlTitle": "API 地址",
+  "linePicacgBaseUrlLabel": "API 域名",
+  "linePicacgUpdated": "哔咔漫画线路设置已更新",
+  "favoriteSortNewToOld": "新到旧",
+  "favoriteSortOldToNew": "旧到新",
+  "displayModeAndroidOnly": "仅 Android 支持屏幕帧率设置",
+  "displayModeReadFailed": "读取屏幕模式失败：{error}",
+  "@displayModeReadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "displayModeSystemRejected": "系统拒绝了该显示模式",
+  "displayModeApplied": "已应用屏幕帧率，若未生效请重启应用",
+  "displayModeSetFailed": "设置失败：{error}",
+  "@displayModeSetFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "displayModeUnknown": "未知",
+  "displayModeUnknownMode": "未知模式",
+  "displayModeCurrentLabel": "当前系统模式：{mode}",
+  "@displayModeCurrentLabel": {
+    "placeholders": {
+      "mode": {}
+    }
+  },
+  "displayModeCurrentSubtitle": "系统当前",
+  "displayModeSelectedSubtitle": "已选择",
+  "displayModeHint": "提示：部分机型会受系统省电或应用白名单策略影响。",
+  "cachePresetDefault": "默认 400MB",
+  "cachePresetLite": "轻量 600MB",
+  "cachePresetBalanced": "均衡 1024MB",
+  "cachePresetHeavy": "重度 2048MB",
+  "cacheMaxSizeTitle": "设置缓存最大容量",
+  "cacheMaxSizeHint": "最低 400MB，可选择预设或自定义输入",
+  "cacheCustomMbLabel": "自定义（MB）",
+  "cacheCustomMbHint": "例如 1024",
+  "cacheLimitUpdated": "缓存上限已设为 {value}MB",
+  "@cacheLimitUpdated": {
+    "placeholders": {
+      "value": {}
+    }
+  },
+  "cacheAutoCleanTitle": "缓存自动清理",
+  "cacheAutoCleanOverflowTitle": "超过上限自动清理",
+  "cacheAutoCleanOverflowSubtitle": "按最旧缓存优先删除，直到低于上限",
+  "cacheAutoCleanSevenDaysTitle": "每七天清理一次",
+  "cacheAutoCleanSevenDaysSubtitle": "删除 7 天前缓存文件",
+  "cacheAutoCleanSevenDaysApplied": "已设为每七天清理一次",
+  "cacheAutoCleanOverflowApplied": "已设为超过上限自动清理",
+  "cacheClearBarrierLabel": "关闭",
+  "cacheClearTitle": "清理缓存",
+  "cacheClearContent": "确定要清理所有图片缓存吗？此操作不可逆。",
+  "cacheClearConfirm": "确定清理",
+  "cacheCleared": "缓存清理成功",
+  "cacheClearFailed": "清理失败：{error}",
+  "@cacheClearFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "cacheSettingsTitle": "缓存设置",
+  "cacheSizeTitle": "缓存大小",
+  "cacheSizeSummary": "当前 {used} / 上限 {max}",
+  "@cacheSizeSummary": {
+    "placeholders": {
+      "used": {},
+      "max": {}
+    }
+  },
+  "cacheAutoCleanModeSummary": "每七天清理一次",
+  "cacheAutoCleanModeOverflowSummary": "超过上限自动清理",
+  "cacheClearNowTitle": "立即清理缓存",
+  "cacheClearNowSubtitle": "清空本地下载的所有图片缓存，释放存储空间",
+  "cloudSyncIncompleteConfig": "请填写完整 URL、Username、Password",
+  "cloudSyncInvalidUrl": "URL 格式无效，请包含 http/https",
+  "cloudSyncStatusIncomplete": "配置不完整",
+  "cloudSyncStatusDisabled": "已关闭",
+  "cloudSyncConfigSaved": "云同步配置已保存",
+  "cloudSyncSaveFailed": "保存失败: {error}",
+  "@cloudSyncSaveFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "cloudSyncNeedCompleteConfig": "请先开启云同步并保存完整配置",
+  "cloudSyncUploadCompleted": "上传备份完成",
+  "cloudSyncUploadFailed": "上传失败: {error}",
+  "@cloudSyncUploadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "cloudSyncRestoreTitle": "恢复备份",
+  "cloudSyncRestoreContent": "是否覆盖本地文件并恢复云端最新备份？",
+  "cloudSyncRestoreConfirm": "覆盖恢复",
+  "cloudSyncRestoreCompleted": "恢复完成",
+  "cloudSyncRestoreSkippedPlatformSettings": "已跳过当前平台不兼容设置",
+  "cloudSyncRestoreFailed": "恢复失败: {error}",
+  "@cloudSyncRestoreFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "cloudSyncTitle": "云同步",
+  "cloudSyncStatusUnchecked": "未检测",
+  "cloudSyncStatusConnected": "已连接",
+  "cloudSyncStatusDisconnected": "未连接",
+  "cloudSyncEnabledTitle": "云同步",
+  "cloudSyncEnabledSubtitle": "开启后可上传与恢复云端备份",
+  "cloudSyncUrlHelper": "程序会自动拼接 /HazukiSync，无需手动填写",
+  "cloudSyncUsernameLabel": "Username",
+  "cloudSyncPasswordLabel": "Password",
+  "cloudSyncSave": "保存",
+  "cloudSyncUpload": "上传备份",
+  "cloudSyncRestore": "恢复备份",
+  "favoritesDebugCopied": "已复制网络日志",
+  "favoritesDebugFilterReason": "仅显示重要日志（错误日志、HTTP>=400、登录相关、含关键错误关键词）",
+  "favoritesDebugFilterImportantTooltip": "筛查重要日志",
+  "favoritesDebugCopyTooltip": "复制",
+  "favoritesDebugRefreshTooltip": "刷新网络日志",
+  "favoritesDebugLoadFailed": "网络日志加载失败：{error}",
+  "@favoritesDebugLoadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "favoritesDebugFullFetchButton": "手动执行完整网络抓取（慢）",
+  "logsNetworkTitle": "网络日志",
+  "logsApplicationTitle": "应用日志",
+  "logsApplicationCopied": "已复制应用日志",
+  "logsApplicationRefreshTooltip": "刷新应用日志",
+  "logsApplicationLoadFailed": "应用日志加载失败：{error}",
+  "@logsApplicationLoadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "logsApplicationEmpty": "暂无应用日志",
+  "logsApplicationExportTooltip": "导出日志",
+  "logsApplicationExportSuccess": "日志文件已导出",
+  "logsApplicationExportFailed": "导出日志文件失败：{error}",
+  "@logsApplicationExportFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "logsReaderTitle": "阅读器日志",
+  "logsReaderCopied": "已复制阅读器日志",
+  "logsReaderRefreshTooltip": "刷新阅读器日志",
+  "logsReaderLoadFailed": "阅读器日志加载失败：{error}",
+  "@logsReaderLoadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "logsReaderEmpty": "暂无阅读器日志",
+  "logsErrorTitle": "错误日志",
+  "logsActionTitle": "操作日志",
+  "logsSystemTitle": "系统日志",
+  "logsPerformanceTitle": "性能日志",
+  "logsFilterTitle": "筛选日志",
+  "logsHistoryTitle": "日志历史",
+  "logsHistoryTooltip": "日志历史",
+  "logsHistoryEmpty": "暂无日志历史",
+  "logsMoreTooltip": "更多选项",
+  "logsCopied": "已复制日志",
+  "logsCopyFailed": "复制日志失败：{error}",
+  "@logsCopyFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "logsLoadFailed": "日志加载失败：{error}",
+  "@logsLoadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "logsEmpty": "暂无日志",
+  "logsSearchHint": "搜索日志",
+  "logsFilterNoResults": "没有匹配的日志",
+  "logsSourceAll": "全部",
+  "logsLevelWarnPlus": "Warn+",
+  "logsLevelErrorOnly": "Error",
+  "logsLevelAll": "All",
+  "logsClearTitle": "清空日志",
+  "logsClearContent": "确定要清空所有已捕获的日志吗？此操作无法撤销。",
+  "logsClearConfirm": "清空",
+  "logsCleared": "日志已清空",
+  "logsAllTitle": "全部日志",
+  "logsLevelInfo": "Info",
+  "logsLevelWarning": "Warning",
+  "logsAreaAll": "全部来源",
+  "logsAreaApplication": "应用",
+  "logsAreaSource": "漫画源",
+  "logsAreaNetwork": "网络",
+  "logsAreaReader": "阅读器",
+  "logsAreaDownload": "下载",
+  "logsAreaUpdate": "更新",
+  "logsAreaPerformance": "性能",
+  "logsViewDetails": "查看更多",
+  "logsDetailTitle": "日志详情",
+  "logsCopyField": "复制内容",
+  "logsSensitiveTitle": "敏感信息处理",
+  "logsSensitiveMessage": "日志可能包含账号信息和登录凭证。请选择复制或导出时的处理方式。",
+  "logsSensitiveHideAll": "隐藏全部敏感信息（推荐）",
+  "logsSensitiveHideCredentials": "保留账号信息，仅隐藏登录凭证",
+  "logsSensitiveKeepAll": "保留全部原始信息",
+  "logsSensitiveKeepAllWarning": "原始日志可能允许他人访问你的账号，请勿分享给不可信的人。",
+  "logsExportAction": "导出",
+  "tagCategoryLoadTimeout": "标签分类加载超时，请稍后重试",
+  "tagCategoryLoadFailed": "标签分类加载失败：{error}",
+  "@tagCategoryLoadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "tagCategoryTitle": "标签分类",
+  "tagCategoryEmpty": "当前漫画源暂无标签分类",
+  "rankingLoadOptionsTimeout": "排行榜分类加载超时，请稍后重试",
+  "rankingLoadTimeout": "排行榜加载超时，请稍后重试",
+  "rankingLoadFailed": "排行榜加载失败：{error}",
+  "@rankingLoadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "rankingTitle": "排行榜",
+  "rankingLayoutButtonTooltip": "切换漫画排列",
+  "rankingLayoutDialogTitle": "漫画排列",
+  "rankingLayoutList": "纵向列表",
+  "rankingLayoutGrid3": "3 格排列",
+  "rankingEmptyOptions": "当前漫画源暂无排行榜分类",
+  "rankingEmptyComics": "暂无排行榜内容",
+  "rankingReachedEnd": "已经到底了",
+  "favoriteAllFolder": "全部",
+  "favoriteModeCloud": "云端",
+  "favoriteModeLocal": "本地",
+  "favoriteFolderGroupCloud": "云端收藏夹",
+  "favoriteFolderGroupLocal": "本地收藏夹",
+  "favoriteLoadTimeout": "收藏加载超时，请下拉重试",
+  "favoriteFoldersLoadFailed": "读取收藏夹失败：{error}",
+  "@favoriteFoldersLoadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "favoriteCreated": "已成功创建收藏夹「{name}」",
+  "@favoriteCreated": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "favoriteCreateFailed": "新建收藏夹失败：{error}",
+  "@favoriteCreateFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "favoriteSortChangeFailed": "切换排序失败：{error}",
+  "@favoriteSortChangeFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "favoriteDeleteFailed": "删除收藏夹失败：{error}",
+  "@favoriteDeleteFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "favoriteFolderHeader": "收藏夹",
+  "favoriteDeleteCurrentFolderTooltip": "删除当前收藏夹",
+  "favoriteLoginRequired": "请登录",
+  "favoriteEmpty": "暂无收藏",
+  "favoriteBackToTop": "回到顶部",
+  "favoriteCreateFolderTitle": "新建收藏夹",
+  "favoriteCreateFolderHint": "请输入收藏夹名称",
+  "favoriteCreateFolderNameRequired": "收藏夹名称不能为空",
+  "favoriteRenameFolderTitle": "重命名收藏夹",
+  "favoriteRenameFolderHint": "请输入新的收藏夹名称",
+  "favoriteRenameFailed": "重命名收藏夹失败：{error}",
+  "@favoriteRenameFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "favoriteCreateLocalFolderAction": "新建本地收藏夹",
+  "favoriteDeleteFolderTitle": "删除收藏夹",
+  "favoriteDeleteFolderContent": "确定删除「{name}」吗？",
+  "@favoriteDeleteFolderContent": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "favoriteCreateFolderTargetTitle": "创建到哪里",
+  "favoriteCreateFolderTargetCloud": "云端",
+  "favoriteCreateFolderTargetLocal": "本地",
+  "discoverSectionLoadFailed": "加载失败：{error}",
+  "@discoverSectionLoadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "discoverSectionEmpty": "暂无漫画",
+  "discoverSectionHomePreview": "首页展示",
+  "discoverSectionChooseDate": "选择日期",
+  "discoverSectionPreviousIssue": "上一期",
+  "discoverSectionNextIssue": "下一期",
+  "commentsTitle": "评论",
+  "commentsLoadFailed": "加载评论失败：{error}",
+  "@commentsLoadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "commentsLoginRequiredToSend": "请先登录后再评论",
+  "commentsSourceNotSupported": "当前漫画源不支持发送评论",
+  "commentsSendSuccess": "评论发送成功",
+  "commentsSendFailed": "发送失败：{error}",
+  "@commentsSendFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "commentsAnonymousUser": "匿名用户",
+  "commentsReplyCount": "回复 {count}",
+  "@commentsReplyCount": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "commentsLikeTooltip": "点赞",
+  "commentsUnlikeTooltip": "取消点赞",
+  "commentsLiked": "已点赞",
+  "commentsUnliked": "已取消点赞",
+  "commentsLikeFailed": "点赞失败：{error}",
+  "@commentsLikeFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "commentsLoadReplies": "查看回复",
+  "commentsHideReplies": "收起回复",
+  "commentsReplyTooltip": "回复",
+  "commentsReplyToUser": "回复 @{name}",
+  "@commentsReplyToUser": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "commentsReplyAttribution": "{author} 回复 {replyTo}",
+  "@commentsReplyAttribution": {
+    "placeholders": {
+      "author": {},
+      "replyTo": {}
+    }
+  },
+  "commentsCancelReplyTooltip": "取消回复",
+  "commentsComposerHint": "写下你的评论…",
+  "commentsReplyComposerHint": "回复 {name}…",
+  "@commentsReplyComposerHint": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "commentsSending": "发送中…",
+  "commentsSend": "发送",
+  "commentsEmpty": "暂无评论",
+  "readerSaveImageTitle": "保存图片",
+  "readerShareImage": "分享",
+  "readerCopyImage": "复制图片",
+  "readerImageCopied": "图片已复制",
+  "readerShareImageFailed": "分享图片失败：{error}",
+  "@readerShareImageFailed": {
+    "placeholders": { "error": {} }
+  },
+  "readerCopyImageFailed": "复制图片失败：{error}",
+  "@readerCopyImageFailed": {
+    "placeholders": { "error": {} }
+  },
+  "readerSaveImageContent": "是否将该漫画图片保存到本地？",
+  "readerPreviousChapter": "上一话",
+  "readerNextChapter": "下一话",
+  "readerNoPreviousChapter": "没有上一话",
+  "readerAlreadyLastChapter": "这是最后一话",
+  "readerChapterLoadFailed": "加载章节失败：{error}",
+  "@readerChapterLoadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "readerCurrentChapterNoImages": "当前章节无图片",
+  "readerPageIndicator": "第{chapter}话 {current}/{total}",
+  "@readerPageIndicator": {
+    "placeholders": {
+      "chapter": {},
+      "current": {},
+      "total": {}
+    }
+  },
+  "readerResetZoom": "还原大小",
+  "labTitle": "实验室",
+  "advancedTitle": "高级",
+  "advancedDebugTitle": "日志",
+  "advancedDebugSubtitle": "软件日志",
+  "advancedSoftwareLogCaptureTitle": "记录软件日志",
+  "advancedSoftwareLogCaptureSubtitle": "关闭后不记录日志",
+  "advancedSoftwareUpdateSourceTitle": "更新链接线路",
+  "advancedSoftwareUpdateSourceSubtitle": "选择软件更新、安装包与漫画源更新使用的链接",
+  "advancedComicIdSearchTitle": "漫画 ID 识别",
+  "advancedComicIdSearchSubtitle": "搜索文本可提取漫画 ID 时，在输入法上方显示可点击的提示",
+  "labSourceAccountTitle": "切换漫画源",
+  "labSourceAccountSubtitle": "切换内置允许来源，并分别登录账号",
+  "labSourceAccountActive": "当前",
+  "labSourceAccountSwitch": "切换",
+  "labSourceAccountSwitchFirst": "请先切换到 {sourceName} 来源",
+  "@labSourceAccountSwitchFirst": {
+    "placeholders": {
+      "sourceName": {}
+    }
+  },
+  "labSourceAccountLogin": "登录",
+  "labSourceAccountLogout": "退出登录",
+  "labSourceAccountLoggedInAs": "已登录：{account}",
+  "@labSourceAccountLoggedInAs": {
+    "placeholders": {
+      "account": {}
+    }
+  },
+  "labSourceAccountLoggedOut": "未登录",
+  "labSourceAccountSwitchSuccess": "已切换来源",
+  "labSourceAccountSwitchFailed": "切换来源失败：{error}",
+  "@labSourceAccountSwitchFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "homeSourceSwitchTooltip": "切换漫画源",
+  "homeSourceSwitchTitle": "切换漫画源",
+  "homeSourceSwitchEmpty": "暂无已启用的插件，请先在设置中安装或启用插件。",
+  "homeSourceSwitchCurrent": "当前来源",
+  "homeSourceSwitchLoadingTitle": "正在切换来源",
+  "homeSourceSwitchLoadingTo": "正在切换到 {sourceName}",
+  "@homeSourceSwitchLoadingTo": {
+    "placeholders": {
+      "sourceName": {}
+    }
+  },
+  "homeSourceSwitchDownloadingSource": "正在下载 {sourceName}",
+  "@homeSourceSwitchDownloadingSource": {
+    "placeholders": {
+      "sourceName": {}
+    }
+  },
+  "homeSourceSwitchLoadingMessage": "请等待漫画源准备完成",
+  "labSourceDeleteTooltip": "删除漫画源",
+  "labSourceDeleteTitle": "删除漫画源",
+  "labSourceDeleteMessage": "确定删除已下载的“{sourceName}”漫画源文件吗？账号、收藏和历史数据会保留。",
+  "@labSourceDeleteMessage": {
+    "placeholders": {
+      "sourceName": {}
+    }
+  },
+  "labSourceDeleteAction": "删除",
+  "labSourceDeleteSuccess": "漫画源已删除",
+  "labSourceDeleteFailed": "删除漫画源失败：{error}",
+  "@labSourceDeleteFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "labSourceAccountNotDownloaded": "未下载",
+  "labSourceAccountDownloadSuccess": "漫画源已下载",
+  "labSourceAccountDownloadFailed": "漫画源下载失败：{error}",
+  "@labSourceAccountDownloadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "advancedNoImageModeTitle": "无图模式",
+  "advancedNoImageModeSubtitle": "全局不显示图片（侧边栏登录头像除外）",
+  "advancedCopyMangaClearDeviceTitle": "清除拷贝漫画设备信息",
+  "advancedCopyMangaClearDeviceSubtitle": "清除伪装客户端的设备标识，下次请求会重新生成",
+  "advancedCopyMangaDeviceCleared": "拷贝漫画设备信息已清除",
+  "advancedEditSourceTitle": "编辑漫画源",
+  "advancedEditSourceSubtitle": "修改或查看漫画源",
+  "advancedRestoreSourceLabel": "还原漫画源",
+  "advancedRestoreSourceSuccess": "漫画源已还原",
+  "sourceEditorLoading": "正在读取漫画源…",
+  "sourceEditorHint": "保存后需要重启应用，新的漫画源才会生效。",
+  "sourceEditorSaved": "漫画源已保存",
+  "sourceEditorLoadFailed": "读取失败：{error}",
+  "@sourceEditorLoadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "sourceEditorSaveFailed": "保存失败：{error}",
+  "@sourceEditorSaveFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "sourceEditorLineCount": "{count} 行",
+  "@sourceEditorLineCount": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "sourceEditorSearchHint": "搜索关键词或代码",
+  "sourceEditorSearchNoResult": "没搜到内容",
+  "sourceEditorSearchResultCount": "搜到 {count} 个结果",
+  "@sourceEditorSearchResultCount": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "sourceEditorRestoreConfirmContent": "确定从插件市场重新下载该插件吗？当前源码会被覆盖，本地编辑备份保持不变。",
+  "sourceEditorRestoreFailed": "还原失败，请稍后再试",
+  "sourceEditorRestoreDownloadingProgress": "正在下载 {progress}%",
+  "@sourceEditorRestoreDownloadingProgress": {
+    "placeholders": {
+      "progress": {}
+    }
+  },
+  "sourceEditorRestoringTitle": "正在还原漫画源",
+  "downloadsScanPermissionDenied": "未获得文件访问权限，无法扫描本地漫画",
+  "downloadsScanCompleted": "扫描完成，已扫描 {scannedDirectories} 个目录，恢复 {recoveredComics} 部漫画",
+  "@downloadsScanCompleted": {
+    "placeholders": {
+      "scannedDirectories": {},
+      "recoveredComics": {}
+    }
+  },
+  "downloadsScanNoRecoverable": "扫描完成，未发现可恢复的已下载漫画",
+  "downloadsScanFailed": "扫描失败：{error}",
+  "@downloadsScanFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "downloadsScanTooltip": "扫描本地漫画",
+  "downloadsIntegrityWarning": "检测到有文件可能被移动或删除",
+  "downloadsDefaultGroup": "默认组",
+  "downloadsGroupsTitle": "下载分组",
+  "downloadsSwitchGroup": "切换组",
+  "downloadsNewGroup": "新建组",
+  "downloadsGroupName": "分组名称",
+  "downloadsCreateGroup": "新建",
+  "downloadsRenameGroup": "重命名分组",
+  "downloadsSortGroups": "排序分组",
+  "downloadsReorderGroup": "按住拖动排序",
+  "downloadsDeleteGroupTitle": "删除分组",
+  "downloadsDeleteGroupContent": "确定删除“{name}”吗？组内漫画会移动到默认组。",
+  "@downloadsDeleteGroupContent": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "downloadsAddToGroup": "添加到分组",
+  "downloadsMoveToGroup": "移动到分组",
+  "downloadsChooseGroup": "选择分组",
+  "downloadsAddAction": "添加",
+  "downloadsMoveAction": "移动",
+  "downloadsAddedToGroup": "已添加到分组",
+  "downloadsMovedToGroup": "已移动到分组",
+  "downloadsAddedToGroups": "已添加到 {groups}",
+  "@downloadsAddedToGroups": {
+    "placeholders": {
+      "groups": {}
+    }
+  },
+  "downloadsMovedToGroups": "已移动到 {groups}",
+  "@downloadsMovedToGroups": {
+    "placeholders": {
+      "groups": {}
+    }
+  },
+  "downloadsComicRemovedFromGroup": "该漫画已从{group}移出",
+  "@downloadsComicRemovedFromGroup": {
+    "placeholders": {
+      "group": {}
+    }
+  },
+  "downloadsComicRemovedFromGroups": "已将该漫画从{groupCount}个组中移出",
+  "@downloadsComicRemovedFromGroups": {
+    "placeholders": {
+      "groupCount": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadsGroupAlreadyContainsComic": "该组已经有这部漫画",
+  "downloadsSelectAtLeastOneGroup": "请至少勾选一个组",
+  "downloadsGroupNameRequired": "请输入分组名称",
+  "downloadsBatchGroupAction": "分组选中漫画",
+  "downloadsBack": "返回",
+  "downloadsMoveOrAddAction": "移动/添加",
+  "downloadsRemoveFromCurrentGroup": "移出该组",
+  "downloadsCannotRemoveOnlyDefaultGroup": "该漫画只存在于默认组，无法移出",
+  "downloadsConfirmRemoveFromGroup": "确认将所选漫画移出{group}？",
+  "@downloadsConfirmRemoveFromGroup": {
+    "placeholders": {
+      "group": {}
+    }
+  },
+  "downloadsViewGroupMembership": "查看",
+  "downloadsNotJoined": "未加入",
+  "downloadsJoined": "已加入",
+  "downloadsNoMatchingComics": "暂无漫画",
+  "downloadsBatchGroupsUpdated": "已更新{comicCount}部漫画的分组",
+  "@downloadsBatchGroupsUpdated": {
+    "placeholders": {
+      "comicCount": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadsBatchAddedToGroup": "已将{comicCount}部漫画添加到{group}",
+  "@downloadsBatchAddedToGroup": {
+    "placeholders": {
+      "comicCount": {
+        "type": "int"
+      },
+      "group": {}
+    }
+  },
+  "downloadsBatchAddedToGroups": "已将{comicCount}部漫画添加到{groupCount}个组中",
+  "@downloadsBatchAddedToGroups": {
+    "placeholders": {
+      "comicCount": {
+        "type": "int"
+      },
+      "groupCount": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadsBatchMovedToGroup": "已将{comicCount}部漫画移动到{group}",
+  "@downloadsBatchMovedToGroup": {
+    "placeholders": {
+      "comicCount": {
+        "type": "int"
+      },
+      "group": {}
+    }
+  },
+  "downloadsBatchMovedToGroups": "已将{comicCount}部漫画移动到{groupCount}个组中",
+  "@downloadsBatchMovedToGroups": {
+    "placeholders": {
+      "comicCount": {
+        "type": "int"
+      },
+      "groupCount": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadsBatchRemovedFromGroup": "已将{comicCount}部漫画从{group}移出",
+  "@downloadsBatchRemovedFromGroup": {
+    "placeholders": {
+      "comicCount": {
+        "type": "int"
+      },
+      "group": {}
+    }
+  },
+  "downloadsBatchRemovedFromGroups": "已将{comicCount}部漫画从{groupCount}个组中移出",
+  "@downloadsBatchRemovedFromGroups": {
+    "placeholders": {
+      "comicCount": {
+        "type": "int"
+      },
+      "groupCount": {
+        "type": "int"
+      }
+    }
+  },
+  "sourceUpdateRestartTitle": "请重新启动软件",
+  "sourceUpdateRestartMessage": "漫画源已下载完成，请重新启动软件以应用更新。",
+  "sourceUpdateLocalLabel": "本地版本",
+  "sourceUpdateCloudLabel": "云端版本",
+  "sourceUpdateAvailableMessage": "检测到新的漫画源版本，下载完成后重启软件即可生效。",
+  "sourceUpdateDownloadingMessage": "正在下载并替换漫画源文件，请保持网络连接。",
+  "sourceUpdateRestartHint": "关闭并重新打开软件后即可完成更新。",
+  "sourceRuntimePrewarmingTitle": "正在预热漫画源",
+  "sourceRuntimePrewarmingMessage": "漫画源正在后台预热，这个页面很快就能使用。",
+  "sourceRuntimeLoadingTitle": "正在加载漫画源",
+  "sourceRuntimeLoadingMessage": "漫画源正在准备中，请稍候。",
+  "sourceRuntimeRetryingTitle": "正在重试漫画源",
+  "sourceRuntimeRetryingMessage": "正在重新尝试初始化漫画源，通常很快就会完成。",
+  "sourceRuntimeFailedTitle": "漫画源暂时不可用",
+  "sourceRuntimeWaitingForRestartTitle": "漫画源已更新",
+  "sourceRuntimeWaitingForRestartMessage": "漫画源文件已经变更，重启软件后即可完整应用新版本。",
+  "sourceRuntimeStageLoadingCache": "正在读取本地缓存",
+  "sourceRuntimeStageDownloadingSource": "正在加载源脚本",
+  "sourceRuntimeStageCreatingEngine": "正在创建 JS 引擎",
+  "sourceRuntimeStageRunningSourceInit": "正在执行源初始化",
+  "sourceRuntimeStageWaitingForRestart": "需要重启",
+  "sourceRuntimeErrorDownloadUnavailable": "无法下载漫画源，而且本地还没有可用的源缓存。",
+  "sourceRuntimeErrorMetadataIncomplete": "漫画源已加载，但缺少必要的元数据。",
+  "sourceRuntimeErrorModuleLoad": "漫画源初始化没有完成，其中一个模块加载失败了。",
+  "sourceRuntimeErrorTimeout": "漫画源响应超时，请稍后重试。",
+  "sourceRuntimeErrorInitialization": "暂时无法完成漫画源初始化。",
+  "sourceRuntimeErrorGeneric": "漫画源当前不可用，请稍后重试。",
+  "announcementTitle": "通知",
+  "announcementEmpty": "暂无通知",
+  "announcementExpired": "已过期",
+  "announcementAcknowledge": "知道了",
+  "announcementImageLoadFailed": "图片加载失败",
+  "announcementHideCurrent": "隐藏此通知",
+  "announcementHideAll": "隐藏所有通知",
+  "settingsPluginsTitle": "插件",
+  "settingsPluginsSubtitle": "管理插件",
+  "pluginsTitle": "漫画源插件",
+  "pluginsSubtitle": "导入、管理和更新漫画源插件",
+  "pluginsImportLocal": "本地导入 JS",
+  "pluginsAddRepository": "添加插件仓库",
+  "pluginsRepositoryUrl": "GitHub 仓库或 JSON 地址",
+  "pluginsBranch": "分支（留空使用默认分支）",
+  "pluginsIndexPath": "插件列表路径",
+  "pluginsNoUpdate": "没有可用更新",
+  "pluginsEditedUpdate": "更新将替换本地编辑的脚本；原包会保留备份。",
+  "pluginsInstalled": "已安装插件",
+  "pluginsEmpty": "尚未安装漫画源，请从内置列表安装插件或导入本地 JS 文件。旧账号、收藏、进度和下载会保留。",
+  "pluginsLocalPackage": "本地插件",
+  "pluginsCheckUpdate": "检查更新",
+  "pluginsUninstall": "卸载（保留数据）",
+  "pluginsUninstallTitle": "卸载插件",
+  "pluginsUninstallConfirm": "确定要卸载“{name}”吗？卸载后将保留账号、收藏、阅读进度和下载数据。",
+  "@pluginsUninstallConfirm": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "pluginsRepositories": "插件仓库",
+  "pluginsRefresh": "刷新列表",
+  "pluginsRemoveRepository": "移除仓库",
+  "pluginsInstall": "安装",
+  "pluginsEnabled": "已启用",
+  "pluginsDisabled": "已停用",
+  "pluginsLocallyEdited": "本地已编辑",
+  "pluginsRepositoriesEmpty": "添加插件仓库，即可浏览并安装漫画源插件。",
+  "pluginsRepositoryEmpty": "暂无可显示的插件，请刷新内置插件列表。",
+  "pluginsAvailable": "插件市场",
+  "pluginsIndexSourceSubtitle": "选择插件索引的访问线路，插件下载地址按索引原样使用。线路选择与高级设置同步。",
+  "pluginsUpdate": "更新",
+  "pluginsAlreadyInstalled": "已安装",
+  "pluginsUpdatesTitle": "插件更新",
+  "pluginsUpdatesMessage": "有 {count} 个插件有新版本",
+  "@pluginsUpdatesMessage": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "pluginsUpdateAvailable": "{name} 有新版本",
+  "@pluginsUpdateAvailable": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "pluginsViewDetails": "查看详情",
+  "sourceBackupRestoreTitle": "恢复本地备份",
+  "sourceBackupRestoreConfirm": "确定恢复到上次保存前的源码吗？当前源码会被覆盖，恢复成功后将清除备份。重启应用后生效。",
+  "sourceRedownloadTitle": "重新下载插件",
+  "sourceBrowserCompleteLogin": "完成登录",
+  "sourceBrowserCookiesMissing": "缺少必要的登录 Cookie，请完成登录后重试。",
+  "sourceCloudProgressUnavailable": "请登录或重试进度读取",
+  "sourceCloudChapterMissing": "网站章节不存在，请选择章节",
+  "sourceExternalAuthorizationWaiting": "请在外部应用中完成授权，然后返回此处。"
+}

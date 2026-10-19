@@ -1,0 +1,290 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - "v*"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  android-release:
+    name: Android Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Generate localization files
+        run: flutter gen-l10n
+
+      - name: Static analysis
+        run: flutter analyze
+
+      - name: Decode keystore
+        run: echo "${{ secrets.HazukiNoa }}" | base64 --decode > android/app/keystore.jks
+
+      - name: Write key.properties
+        run: |
+          echo "storePassword=${{ secrets.STORE_PASSWORD }}" > android/key.properties
+          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
+          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
+          echo "storeFile=keystore.jks" >> android/key.properties
+
+      - name: Build Android APKs
+        run: flutter build apk --release --split-per-abi --target-platform android-arm64
+
+      - name: Resolve release notes from tag annotation
+        id: release_notes
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          git fetch --force origin "refs/tags/${RELEASE_TAG}:refs/tags/${RELEASE_TAG}"
+
+          tag_type="$(git cat-file -t "refs/tags/${RELEASE_TAG}")"
+          if [ "${tag_type}" != "tag" ]; then
+            echo "::error::${RELEASE_TAG} is a lightweight tag. Create it as an annotated tag so the release notes come from the tag message."
+            echo "::error::Example: git tag -a ${RELEASE_TAG} -F RELEASE_NOTES.md && git push origin ${RELEASE_TAG}"
+            exit 1
+          fi
+
+          git tag -l "${RELEASE_TAG}" --format='%(contents)' > RELEASE_NOTES.md
+
+      - name: Release Android assets to GitHub Releases
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/app/outputs/flutter-apk/app-*-release.apk
+          name: ${{ github.ref_name }}
+          body_path: RELEASE_NOTES.md
+          generate_release_notes: false
+          draft: false
+          prerelease: false
+
+  windows-release:
+    name: Windows Release
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Enable Windows desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Generate localization files
+        run: flutter gen-l10n
+
+      - name: Build Windows app
+        run: flutter build windows --release
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup -y --no-progress
+
+      - name: Install Inno Setup Chinese language
+        shell: pwsh
+        run: |
+          $langDir = Join-Path "${env:ProgramFiles(x86)}" "Inno Setup 6\Languages"
+          $langFile = Join-Path $langDir "ChineseSimplified.isl"
+
+          if (-not (Test-Path $langFile)) {
+            $url = "https://raw.githubusercontent.com/jrsoftware/issrc/8043fe6ba56caa22484658b232373a1c28435723/Files/Languages/Unofficial/ChineseSimplified.isl"
+            $expectedHash = "7d544b9bb1d142cfa11f2e5d3cc8abe2e55f8e066c5124e3772675aa236e1278"
+
+            New-Item -ItemType Directory -Path $langDir -Force | Out-Null
+            Invoke-WebRequest -Uri $url -OutFile $langFile
+
+            $actualHash = (Get-FileHash -Algorithm SHA256 $langFile).Hash.ToLowerInvariant()
+            if ($actualHash -ne $expectedHash) {
+              throw "Downloaded ChineseSimplified.isl hash mismatch: $actualHash"
+            }
+          }
+
+      - name: Resolve Windows package version
+        shell: pwsh
+        run: |
+          $refName = "${{ github.ref_name }}"
+          if ($refName -match '^v(.+)$') {
+            $version = $Matches[1]
+          } else {
+            $pubspecVersion = (Select-String -Path "pubspec.yaml" -Pattern '^version:\s*(.+)$').Matches[0].Groups[1].Value.Trim()
+            $version = ($pubspecVersion -split '\+')[0]
+          }
+
+          if ($version -notmatch '^\d+(\.\d+){0,3}$') {
+            throw "Windows installer version '$version' is not a numeric dotted version."
+          }
+
+          "WINDOWS_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Build Windows installer
+        shell: pwsh
+        run: |
+          $appVersionArg = "/DAppVersion=$env:WINDOWS_VERSION"
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" $appVersionArg windows\installer.iss
+
+      - name: Create Windows package
+        shell: pwsh
+        run: |
+          $exeName = "hazuki-windows-x64-${{ github.ref_name }}-setup.exe"
+          Move-Item -Path "windows\hazuki-windows-x64-$env:WINDOWS_VERSION-setup.exe" -Destination $exeName
+          $packageName = "hazuki-windows-x64-${{ github.ref_name }}.zip"
+          Compress-Archive -Path "build/windows/x64/runner/Release/*" -DestinationPath $packageName -Force
+          "WINDOWS_PACKAGE=$packageName" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "WINDOWS_EXE=$exeName" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Resolve release notes from tag annotation
+        id: release_notes
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          git fetch --force origin "refs/tags/${RELEASE_TAG}:refs/tags/${RELEASE_TAG}"
+
+          tag_type="$(git cat-file -t "refs/tags/${RELEASE_TAG}")"
+          if [ "${tag_type}" != "tag" ]; then
+            echo "::error::${RELEASE_TAG} is a lightweight tag. Create it as an annotated tag so the release notes come from the tag message."
+            echo "::error::Example: git tag -a ${RELEASE_TAG} -F RELEASE_NOTES.md && git push origin ${RELEASE_TAG}"
+            exit 1
+          fi
+
+          git tag -l "${RELEASE_TAG}" --format='%(contents)' > RELEASE_NOTES.md
+
+      - name: Release Windows assets to GitHub Releases
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ env.WINDOWS_PACKAGE }}
+            ${{ env.WINDOWS_EXE }}
+          name: ${{ github.ref_name }}
+          body_path: RELEASE_NOTES.md
+          generate_release_notes: false
+          draft: false
+          prerelease: false
+
+  update-manifest:
+    name: Update Manifest
+    runs-on: ubuntu-latest
+    needs:
+      - android-release
+      - windows-release
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+
+      - name: Generate update.json
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          release_json="$(curl -fsSL \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${REPOSITORY}/releases/tags/${RELEASE_TAG}")"
+
+          version="${RELEASE_TAG#v}"
+          release_url="$(printf '%s' "${release_json}" | jq -r '.html_url')"
+          git fetch --force origin "refs/tags/${RELEASE_TAG}:refs/tags/${RELEASE_TAG}"
+
+          tag_type="$(git cat-file -t "refs/tags/${RELEASE_TAG}")"
+          if [ "${tag_type}" != "tag" ]; then
+            echo "::error::${RELEASE_TAG} is a lightweight tag. Create it as an annotated tag so the changelog comes from the tag message."
+            echo "::error::Example: git tag -a ${RELEASE_TAG} -F RELEASE_NOTES.md && git push origin ${RELEASE_TAG}"
+            exit 1
+          fi
+
+          changelog="$(git tag -l "${RELEASE_TAG}" --format='%(contents)')"
+          arm64_url="$(printf '%s' "${release_json}" | jq -r '.assets[] | select(.name | test("arm64-v8a"; "i")) | .browser_download_url' | head -n 1)"
+          armv7_url="$(printf '%s' "${release_json}" | jq -r '.assets[] | select(.name | test("armeabi-v7a"; "i")) | .browser_download_url' | head -n 1)"
+          x64_url="$(printf '%s' "${release_json}" | jq -r '.assets[] | select(.name | test("x86_64"; "i")) | .browser_download_url' | head -n 1)"
+          x86_url="$(printf '%s' "${release_json}" | jq -r '.assets[] | select(.name | test("(^|[^0-9])x86([^0-9]|$)"; "i")) | .browser_download_url' | head -n 1)"
+          windows_x64_url="$(printf '%s' "${release_json}" | jq -r '.assets[] | select(.name | test("hazuki-windows-x64.*\\.zip$"; "i")) | .browser_download_url' | head -n 1)"
+          windows_exe_url="$(printf '%s' "${release_json}" | jq -r '.assets[] | select(.name | test("hazuki-windows-x64.*-setup\\.exe$"; "i")) | .browser_download_url' | head -n 1)"
+
+          jq -n \
+            --arg version "${version}" \
+            --arg releaseUrl "${release_url}" \
+            --arg arm64 "${arm64_url}" \
+            --arg armv7 "${armv7_url}" \
+            --arg x64 "${x64_url}" \
+            --arg x86 "${x86_url}" \
+            --arg windowsX64 "${windows_x64_url}" \
+            --arg windowsExe "${windows_exe_url}" \
+            --arg changelog "${changelog}" \
+            '{
+              version: $version,
+              releaseUrl: $releaseUrl,
+              apkUrls: (
+                {}
+                + (if $arm64 != "" then {"arm64-v8a": $arm64} else {} end)
+                + (if $armv7 != "" then {"armeabi-v7a": $armv7} else {} end)
+                + (if $x64 != "" then {"x86_64": $x64} else {} end)
+                + (if $x86 != "" then {"x86": $x86} else {} end)
+              )
+            }
+            + (if ($windowsX64 != "" or $windowsExe != "") then
+                {windowsUrls: (
+                  {}
+                  + (if $windowsX64 != "" then {"x64_zip": $windowsX64} else {} end)
+                  + (if $windowsExe != "" then {"x64_exe": $windowsExe} else {} end)
+                )}
+               else {} end)
+            + (if $changelog != "" then {changelog: $changelog} else {} end)' > update.json
+
+      - name: Commit update.json
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add update.json
+          git diff --cached --quiet && exit 0
+          git commit -m "chore: update update.json for ${GITHUB_REF_NAME} [skip ci]"
+          git push origin "HEAD:${DEFAULT_BRANCH}"

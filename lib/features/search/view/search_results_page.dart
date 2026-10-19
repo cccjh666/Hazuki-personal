@@ -1,0 +1,772 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:hazuki/l10n/app_localizations.dart';
+import 'package:hazuki/models/hazuki_models.dart';
+import 'package:hazuki/services/source/source_capabilities.dart';
+import 'package:hazuki/services/search_history_service.dart';
+import 'package:hazuki/shared/navigation_tags.dart';
+import 'package:hazuki/shared/windows/windows_comic_detail.dart';
+import 'package:hazuki/widgets/widgets.dart';
+import 'package:hazuki/widgets/windows_comic_detail_host.dart';
+
+import '../state/aggregate_search_results_controller.dart';
+import '../state/search_focus_coordinator.dart';
+import '../state/search_id_extract_controller.dart';
+import '../state/search_results_controller.dart';
+import '../support/search_shared.dart';
+import 'search_bar_shell.dart';
+import 'search_aggregate_results.dart';
+import 'search_results_page_widgets.dart';
+import 'search_results_widgets.dart';
+import '../support/search_submission_coordinator.dart';
+
+class SearchResultsPage extends StatefulWidget {
+  const SearchResultsPage({
+    super.key,
+    required this.sourceService,
+    required this.historyService,
+    required this.initialKeyword,
+    this.initialOrder = '',
+    this.entryIntent = SearchEntryIntent.externalKeyword,
+    required this.comicDetailPageBuilder,
+    this.comicCoverHeroTagBuilder = comicCoverHeroTag,
+    this.searchPageLoader,
+    this.aggregateSearchEnabled,
+    this.comicLayout,
+    this.comicDetailsLoader,
+  });
+
+  final SourceSearchGateway sourceService;
+  final SearchHistoryService historyService;
+  final String initialKeyword;
+  final String initialOrder;
+  final SearchEntryIntent entryIntent;
+  final ComicDetailPageBuilder comicDetailPageBuilder;
+  final ComicHeroTagBuilder comicCoverHeroTagBuilder;
+  final SearchPageLoader? searchPageLoader;
+  final bool? aggregateSearchEnabled;
+  final SearchComicLayout? comicLayout;
+  final SearchComicDetailsLoader? comicDetailsLoader;
+
+  @override
+  State<SearchResultsPage> createState() => _SearchResultsPageState();
+}
+
+class _SearchResultsPageState extends State<SearchResultsPage>
+    with WidgetsBindingObserver {
+  late final SearchResultsController _resultsController;
+  late final SearchSubmissionCoordinator _submissionCoordinator =
+      SearchSubmissionCoordinator(
+        results: _resultsController,
+        sourceService: _sourceService,
+        aggregateResults: _aggregateResultsController,
+        recordHistory: (keyword) =>
+            addSearchHistory(widget.historyService, keyword),
+        isActive: () => mounted,
+        openComic: (comic) async {
+          await _focusCoordinator.dismissKeyboard(context);
+          if (!mounted) return;
+          await openComicDetail(
+            context,
+            comic: comic,
+            heroTag: widget.comicCoverHeroTagBuilder(
+              comic,
+              salt: 'search-id-direct',
+            ),
+            pageBuilder: widget.comicDetailPageBuilder,
+            replaceCurrentRoute: true,
+          );
+        },
+      );
+  late final AggregateSearchResultsController _aggregateResultsController;
+  late final SearchFocusCoordinator _focusCoordinator = SearchFocusCoordinator(
+    isMounted: () => mounted,
+    initialText: widget.initialKeyword,
+  );
+  SourceSearchGateway get _sourceService => widget.sourceService;
+  late final SearchIdExtractController _idExtractController =
+      SearchIdExtractController(
+        sourceService: _sourceService,
+        isMounted: () => mounted,
+        isInputFocused: () => _searchInputFocused,
+        currentText: () => _focusCoordinator.text,
+      );
+
+  final ScrollController _scrollController = ScrollController();
+
+  bool _showBackToTop = false;
+  late bool _aggregateSearchEnabled;
+  late SearchComicLayout _comicLayout;
+  bool _keyboardDismissPopInProgress = false;
+  bool _initialSearchPending = true;
+  Animation<double>? _initialSearchRouteAnimation;
+
+  // Keep the first frame loading until a controller takes over the search.
+  bool get _waitingForInitialSearch =>
+      _initialSearchPending &&
+      widget.initialKeyword.trim().isNotEmpty &&
+      _resultsController.searchKeyword.isEmpty &&
+      _aggregateResultsController.keyword.isEmpty;
+
+  String get _searchKeyword => _waitingForInitialSearch
+      ? widget.initialKeyword.trim()
+      : _aggregateSearchEnabled
+      ? _aggregateResultsController.keyword
+      : _resultsController.searchKeyword;
+  String? get _searchErrorMessage => _resultsController.searchErrorMessage;
+  List<ExploreComic> get _searchComics => _resultsController.searchComics;
+  bool get _searchLoading =>
+      _waitingForInitialSearch || _resultsController.searchLoading;
+  bool get _searchLoadingMore => _resultsController.searchLoadingMore;
+  String get _searchOrder => _resultsController.searchOrder;
+  bool get _showKeyboardOnEnter => widget.entryIntent.showKeyboardOnEnter;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeSearchResultsPage();
+  }
+
+  @override
+  void dispose() {
+    _disposeSearchResultsPage();
+    super.dispose();
+  }
+
+  @override
+  void didChangeMetrics() {
+    super.didChangeMetrics();
+    _handleMetricsChanged();
+  }
+
+  void _updateSearchResultsState(VoidCallback update) {
+    if (!mounted) {
+      return;
+    }
+    setState(update);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return WindowsComicDetailHost(
+      suppressExistingPanel: true,
+      child: ListenableBuilder(
+        listenable: Listenable.merge([
+          _resultsController,
+          _aggregateResultsController,
+          _focusCoordinator,
+          _idExtractController,
+        ]),
+        builder: (context, _) => PopScope(
+          canPop:
+              !_keyboardDismissPopInProgress &&
+              !_focusCoordinator.keyboardVisible &&
+              !_searchInputFocused,
+          onPopInvokedWithResult: _handlePopInvoked,
+          child: Scaffold(
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            appBar: _buildSearchResultsAppBar(),
+            body: Stack(
+              children: [
+                _buildSearchResultsBody(),
+                SearchResultsBackToTopButton(
+                  visible: _showBackToTop,
+                  onPressed: _handleBackToTopPressed,
+                ),
+                SearchResultsIdExtractPill(
+                  extractedId: _idExtractController.extractedId,
+                  onApply: _applyExtractedComicId,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _initializeSearchResultsPage() {
+    _aggregateSearchEnabled = widget.aggregateSearchEnabled ?? false;
+    _comicLayout = widget.comicLayout ?? SearchComicLayout.list;
+    _resultsController = SearchResultsController(
+      initialOrder: widget.initialOrder,
+      sourceService: widget.sourceService,
+      searchPageLoader: widget.searchPageLoader,
+      comicDetailsLoader: widget.comicDetailsLoader,
+    );
+    _aggregateResultsController = AggregateSearchResultsController(
+      sourceService: _sourceService,
+    );
+    _scrollController.addListener(_onScroll);
+    WidgetsBinding.instance.addObserver(this);
+    _focusCoordinator.primaryFocusNode.addListener(_handleSearchFocusChanged);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      unawaited(() async {
+        if (widget.aggregateSearchEnabled == null) {
+          final enabled = await isAggregateSearchEnabled();
+          if (!mounted) return;
+          setState(() {
+            _aggregateSearchEnabled = enabled;
+          });
+        }
+        if (widget.comicLayout == null) {
+          final comicLayout = await loadSearchComicLayout();
+          if (!mounted) return;
+          setState(() {
+            _comicLayout = comicLayout;
+          });
+        }
+        _focusCoordinator.syncKeyboardVisibility();
+        _focusCoordinator.attachRouteAutoFocus(
+          context,
+          showKeyboard: _showKeyboardOnEnter,
+          forceShowKeyboard: true,
+        );
+        await _idExtractController.load();
+        if (!mounted) return;
+        _scheduleInitialSearch();
+      }());
+    });
+  }
+
+  void _scheduleInitialSearch() {
+    final animation = ModalRoute.of(context)?.animation;
+    if (animation == null || animation.isCompleted) {
+      unawaited(_runInitialSearch());
+      return;
+    }
+    // Fast results must not finish their entrance behind the route snapshot.
+    _initialSearchRouteAnimation = animation;
+    animation.addStatusListener(_handleInitialSearchRouteStatus);
+  }
+
+  void _handleInitialSearchRouteStatus(AnimationStatus status) {
+    if (status != AnimationStatus.completed) return;
+    _initialSearchRouteAnimation?.removeStatusListener(
+      _handleInitialSearchRouteStatus,
+    );
+    _initialSearchRouteAnimation = null;
+    if (mounted) unawaited(_runInitialSearch());
+  }
+
+  Future<void> _runInitialSearch() async {
+    try {
+      await _submitSearch();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _initialSearchPending = false;
+        });
+      }
+    }
+  }
+
+  void _disposeSearchResultsPage() {
+    _initialSearchRouteAnimation?.removeStatusListener(
+      _handleInitialSearchRouteStatus,
+    );
+    _initialSearchRouteAnimation = null;
+    _submissionCoordinator.invalidate();
+    _focusCoordinator.primaryFocusNode.removeListener(
+      _handleSearchFocusChanged,
+    );
+    _scrollController.removeListener(_onScroll);
+    WidgetsBinding.instance.removeObserver(this);
+    _idExtractController.dispose();
+    _scrollController.dispose();
+    _resultsController.dispose();
+    _aggregateResultsController.dispose();
+    _focusCoordinator.dispose();
+  }
+
+  bool get _searchInputFocused => _focusCoordinator.primaryFocusNode.hasFocus;
+
+  void _handleSearchFocusChanged() {
+    if (_searchInputFocused) {
+      _idExtractController.syncWithFocus(_focusCoordinator.text);
+    } else {
+      _idExtractController.scheduleHideIfUnfocused();
+    }
+  }
+
+  void _handleMetricsChanged() {
+    if (!mounted) {
+      return;
+    }
+    final wasKeyboardVisible = _focusCoordinator.keyboardVisible;
+    _focusCoordinator.syncKeyboardVisibility();
+    if (wasKeyboardVisible && !_focusCoordinator.keyboardVisible) {
+      _idExtractController.scheduleHideIfUnfocused();
+    }
+    _closePageWhenKeyboardIsDismissed();
+  }
+
+  Future<void> _dismissSearchInputIfFocused() async {
+    if (!_searchInputFocused && !_focusCoordinator.keyboardVisible) {
+      return;
+    }
+    await _focusCoordinator.dismissKeyboard(context, parkOnPage: true);
+  }
+
+  bool _handleSearchResultsScrollNotification(ScrollNotification notification) {
+    if (notification.metrics.axis != Axis.vertical) {
+      return false;
+    }
+    final isDragStart =
+        notification is ScrollStartNotification &&
+        notification.dragDetails != null;
+    final isUserScroll =
+        notification is UserScrollNotification &&
+        notification.direction != ScrollDirection.idle;
+    if (isDragStart || isUserScroll) {
+      unawaited(_dismissSearchInputIfFocused());
+    }
+    return false;
+  }
+
+  Future<void> _requestSearchFocus({bool showKeyboard = true}) {
+    return _focusCoordinator.requestPrimarySearchFocus(
+      context,
+      showKeyboard: showKeyboard,
+    );
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) {
+      return;
+    }
+
+    final position = _scrollController.position;
+    final nextShowBackToTop = position.pixels > 520;
+    final shouldLoadMore =
+        position.maxScrollExtent > 0 &&
+        position.pixels >= position.maxScrollExtent - 260;
+
+    if (nextShowBackToTop != _showBackToTop) {
+      _updateSearchResultsState(() {
+        _showBackToTop = nextShowBackToTop;
+      });
+    }
+
+    if (shouldLoadMore && !_aggregateSearchEnabled) {
+      unawaited(_resultsController.loadMoreSearch(searchMessages(context)));
+    }
+  }
+
+  Future<void> _scrollToTop({bool focusSearch = false}) async {
+    if (_scrollController.hasClients) {
+      await _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+      );
+    }
+    if (focusSearch && mounted) {
+      await _requestSearchFocus();
+    }
+  }
+
+  void _clearSearch() {
+    _focusCoordinator.clearText();
+    _idExtractController.hide();
+    unawaited(_requestSearchFocus());
+  }
+
+  Future<void> _onSearchOrderSelected(String order) async {
+    final orderLabels = searchOrderLabels(
+      context,
+      sourceKey: (_sourceService.activeSourceKey ?? ''),
+    );
+    if (!orderLabels.containsKey(order) || order == _searchOrder) {
+      return;
+    }
+
+    if (_scrollController.hasClients && _scrollController.offset > 0) {
+      await _scrollToTop();
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    _resultsController.setSearchOrder(order);
+    if (_searchKeyword.isNotEmpty) {
+      await _resultsController.search(
+        searchMessages(context),
+        keyword: _searchKeyword,
+        page: 1,
+      );
+    }
+  }
+
+  String get _currentSearchOrderLabel {
+    return searchOrderLabels(
+          context,
+          sourceKey: (_sourceService.activeSourceKey ?? ''),
+        )[_searchOrder] ??
+        _searchOrder;
+  }
+
+  void _handlePopInvoked(bool didPop, Object? result) {
+    if (didPop) {
+      return;
+    }
+    _dismissKeyboardAndPop();
+  }
+
+  void _dismissKeyboardAndPop() {
+    if (_keyboardDismissPopInProgress || !mounted) {
+      return;
+    }
+    setState(() {
+      _keyboardDismissPopInProgress = true;
+    });
+    unawaited(() async {
+      await _focusCoordinator.dismissKeyboard(context, parkOnPage: true);
+      _closePageWhenKeyboardIsDismissed();
+    }());
+  }
+
+  void _closePageWhenKeyboardIsDismissed() {
+    if (!_keyboardDismissPopInProgress ||
+        !mounted ||
+        _focusCoordinator.keyboardVisible) {
+      return;
+    }
+    _keyboardDismissPopInProgress = false;
+    Navigator.of(context).pop();
+  }
+
+  Future<void> _submitSearch({String? submittedText}) async {
+    _idExtractController.hide();
+    final activeController = _focusCoordinator.activeController;
+    final rawKeyword = submittedText ?? activeController.text;
+    _focusCoordinator.syncText(rawKeyword);
+    final keyword = await normalizeSubmittedKeyword(
+      rawKeyword,
+      controller: activeController,
+    );
+
+    _focusCoordinator.syncText(keyword);
+
+    if (!mounted) {
+      return;
+    }
+
+    if (keyword.isEmpty) {
+      _clearSearch();
+      return;
+    }
+
+    await _submissionCoordinator.submit(
+      keyword: keyword,
+      aggregate: _aggregateSearchEnabled,
+      activeSourceKey: (_sourceService.activeSourceKey ?? ''),
+      messages: searchMessages(context),
+    );
+  }
+
+  Widget _buildSearchBar({
+    Key? key,
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required String clearKey,
+    required String submitKey,
+    required VoidCallback onClear,
+    required ValueChanged<String> onChanged,
+    bool compact = false,
+  }) {
+    return SearchBarShell(
+      key: key,
+      controller: controller,
+      focusNode: focusNode,
+      clearKey: clearKey,
+      submitKey: submitKey,
+      compact: compact,
+      onTap: () => _idExtractController.syncWithFocus(controller.text),
+      onClear: onClear,
+      onSubmit: () => unawaited(_submitSearch()),
+      onSubmitted: (value) => unawaited(_submitSearch(submittedText: value)),
+      onChanged: onChanged,
+    );
+  }
+
+  Widget _buildSearchResultsAppBarTitle() {
+    return Hero(
+      tag: discoverSearchHeroTag,
+      child: _buildSearchBar(
+        key: const ValueKey('search-results-app-bar-search-bar'),
+        controller: _focusCoordinator.primaryController,
+        focusNode: _focusCoordinator.primaryFocusNode,
+        clearKey: 'results-clear',
+        submitKey: 'results-submit',
+        compact: true,
+        onClear: _clearSearch,
+        onChanged: (value) {
+          _focusCoordinator.syncText(value, updatePrimary: false);
+          _idExtractController.syncWithFocus(value);
+        },
+      ),
+    );
+  }
+
+  Widget _buildSearchResultState() {
+    return SearchResultsStateView(
+      searchKeyword: _searchKeyword,
+      searchLoading: _searchLoading,
+      searchComics: _searchComics,
+      searchErrorMessage: _searchErrorMessage,
+      sourceRuntimeState: _resultsController.sourceRuntimeState,
+      onRetry: () async {
+        await _retrySearchFromCurrentKeyword();
+      },
+    );
+  }
+
+  Future<void> _retrySearchFromCurrentKeyword() async {
+    await _dismissSearchInputIfFocused();
+    if (!mounted) {
+      return;
+    }
+    if (_resultsController.canRetry) {
+      _resultsController.logRuntimeRetryRequested('search_results_page');
+    }
+    await _resultsController.search(
+      searchMessages(context),
+      keyword: _searchKeyword,
+      page: 1,
+    );
+  }
+
+  Widget _buildSearchComicItem(ExploreComic comic, int index) {
+    final heroTag = widget.comicCoverHeroTagBuilder(
+      comic,
+      salt: 'search-results',
+    );
+    return SearchComicListItem(
+      key: ValueKey('search-list-comic-${comic.sourceKey}-${comic.id}'),
+      comic: comic,
+      heroTag: heroTag,
+      index: index,
+      onTap: () {
+        unawaited(() async {
+          await _dismissSearchInputIfFocused();
+          if (!mounted) {
+            return;
+          }
+          await openComicDetail(
+            context,
+            comic: comic,
+            heroTag: heroTag,
+            pageBuilder: widget.comicDetailPageBuilder,
+          );
+        }());
+      },
+    );
+  }
+
+  Widget _buildSearchComicGridItem(
+    ExploreComic comic,
+    int index,
+    int coverCacheWidth,
+  ) {
+    final heroTag = widget.comicCoverHeroTagBuilder(
+      comic,
+      salt: 'search-results-grid-$index',
+    );
+    return SearchComicGridItem(
+      key: ValueKey('search-grid-comic-${comic.sourceKey}-${comic.id}'),
+      comic: comic,
+      heroTag: heroTag,
+      index: index,
+      coverCacheWidth: coverCacheWidth,
+      placeholderColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+      onTap: () async {
+        await _dismissSearchInputIfFocused();
+        if (!mounted) return;
+        await openComicDetail(
+          context,
+          comic: comic,
+          heroTag: heroTag,
+          pageBuilder: widget.comicDetailPageBuilder,
+        );
+      },
+    );
+  }
+
+  PreferredSizeWidget _buildSearchResultsAppBar() {
+    return SearchResultsAppBar(
+      title: _buildSearchResultsAppBarTitle(),
+      orderLabels: searchOrderLabels(
+        context,
+        sourceKey: (_sourceService.activeSourceKey ?? ''),
+      ),
+      currentOrderLabel: _currentSearchOrderLabel,
+      searchOrder: _searchOrder,
+      onOrderMenuOpened: () {
+        unawaited(_dismissSearchInputIfFocused());
+      },
+      onOrderSelected: (order) {
+        unawaited(_dismissSearchInputIfFocused());
+        unawaited(_onSearchOrderSelected(order));
+      },
+      showOrderControl:
+          !_aggregateSearchEnabled &&
+          searchOrderLabels(
+            context,
+            sourceKey: (_sourceService.activeSourceKey ?? ''),
+          ).isNotEmpty,
+    );
+  }
+
+  Widget _buildSearchResultsBody() {
+    if (_aggregateSearchEnabled) {
+      if (_searchLoading) {
+        return ListView(
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: ClampingScrollPhysics(),
+          ),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+          children: [
+            SearchResultsStateView(
+              searchKeyword: _waitingForInitialSearch
+                  ? widget.initialKeyword.trim()
+                  : _resultsController.searchKeyword,
+              searchLoading: true,
+              searchComics: const [],
+              searchErrorMessage: null,
+              sourceRuntimeState: const SourceRuntimeState.idle(),
+              onRetry: () async {},
+            ),
+          ],
+        );
+      }
+      return SearchAggregateResultsBody(
+        scrollController: _scrollController,
+        sections: _aggregateResultsController.sections,
+        onRefresh: _refreshSearchResults,
+        onScrollNotification: _handleSearchResultsScrollNotification,
+        onRetry: (section) {
+          unawaited(
+            _aggregateResultsController.retry(searchMessages(context), section),
+          );
+        },
+        onLoadMore: (section) {
+          unawaited(
+            _aggregateResultsController.loadMore(
+              searchMessages(context),
+              section,
+            ),
+          );
+        },
+        onComicTap: _openAggregateComic,
+        onViewMore: _openAggregateSection,
+        heroTagBuilder: (comic, salt) =>
+            widget.comicCoverHeroTagBuilder(comic, salt: salt),
+      );
+    }
+    return SearchResultsBody(
+      scrollController: _scrollController,
+      searchComics: _searchComics,
+      searchLoadingMore: _searchLoadingMore,
+      searchErrorMessage: _searchErrorMessage,
+      resultState: _buildSearchResultState(),
+      onRefresh: _refreshSearchResults,
+      onScrollNotification: _handleSearchResultsScrollNotification,
+      itemBuilder: _buildSearchComicItem,
+      gridItemBuilder: _buildSearchComicGridItem,
+      comicLayout: _comicLayout,
+      onRetryPartialError: _retrySearchFromCurrentKeyword,
+    );
+  }
+
+  Future<void> _refreshSearchResults() async {
+    await _dismissSearchInputIfFocused();
+    if (!mounted) {
+      return;
+    }
+    if (_searchKeyword.isEmpty) {
+      await _submitSearch();
+      return;
+    }
+    if (_aggregateSearchEnabled) {
+      await _aggregateResultsController.search(
+        searchMessages(context),
+        _searchKeyword,
+      );
+    } else {
+      await _resultsController.search(
+        searchMessages(context),
+        keyword: _searchKeyword,
+        page: 1,
+        silentRefresh: _searchComics.isNotEmpty,
+      );
+    }
+  }
+
+  Future<void> _openAggregateComic(ExploreComic comic, String heroTag) async {
+    await _dismissSearchInputIfFocused();
+    if (!mounted) return;
+    try {
+      await openComicDetail(
+        context,
+        comic: comic,
+        heroTag: heroTag,
+        pageBuilder: widget.comicDetailPageBuilder,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      await showHazukiPrompt(
+        context,
+        AppLocalizations.of(context)!.searchFailed('$error'),
+        isError: true,
+      );
+    }
+  }
+
+  void _openAggregateSection(AggregateSearchSectionState section) {
+    unawaited(_dismissSearchInputIfFocused());
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => SearchAggregateSectionPage(
+          controller: _aggregateResultsController,
+          section: section,
+          onComicTap: _openAggregateComic,
+          heroTagBuilder: (comic, salt) =>
+              widget.comicCoverHeroTagBuilder(comic, salt: salt),
+          comicLayout: _comicLayout,
+        ),
+      ),
+    );
+  }
+
+  void _handleBackToTopPressed() {
+    unawaited(() async {
+      await _dismissSearchInputIfFocused();
+      if (!mounted) {
+        return;
+      }
+      await _scrollToTop();
+    }());
+  }
+
+  void _applyExtractedComicId() {
+    final id = _idExtractController.captureApplyId();
+    if (id == null) return;
+    _focusCoordinator.syncText(id);
+    _idExtractController.hide();
+    unawaited(() async {
+      await _dismissSearchInputIfFocused();
+      if (!mounted) {
+        return;
+      }
+      await _submitSearch(submittedText: id);
+    }());
+  }
+}

@@ -1,0 +1,276 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
+
+import 'package:hazuki/services/announcements/announcement_controller.dart';
+import 'package:hazuki/services/discover_daily_recommendation_service.dart';
+import 'package:hazuki/services/source/source_capabilities.dart';
+import 'package:hazuki/features/home/state/home_profile_controller.dart';
+import 'package:hazuki/features/home/support/home_profile_flow.dart';
+import 'package:hazuki/features/home/state/home_shell_controller.dart';
+import 'package:hazuki/shared/favorites/favorite_app_bar_actions_state.dart';
+import 'package:hazuki/shared/favorites/favorite_page_actions.dart';
+
+class HomeCoordinator extends ChangeNotifier {
+  HomeCoordinator({
+    required int initialTabIndex,
+    required SourceHomeGateway sourceService,
+    required SourceSwitchGateway sourceSwitchService,
+    required SourceImageGateway imageService,
+    required DiscoverDailyRecommendationService dailyRecommendationService,
+    required AnnouncementController announcementService,
+  }) : _sourceService = sourceService,
+       _sourceSwitchService = sourceSwitchService,
+       _imageService = imageService,
+       _dailyRecommendationService = dailyRecommendationService,
+       _announcementService = announcementService,
+       _profileController = HomeProfileController(sourceService: sourceService),
+       _shellController = HomeShellController(initialTabIndex: initialTabIndex),
+       scaffoldKey = GlobalKey<ScaffoldState>(),
+       favoriteActionsBinding = FavoritePageActionsBinding() {
+    _lastSourceKey = _sourceService.activeSourceKey;
+    _lastSourceRevision = _sourceService.sourceRevision;
+    _awaitingSourceInit = !_sourceService.isInitialized;
+    _profileController.addListener(_relayChange);
+    _shellController.addListener(_relayChange);
+    _dailyRecommendationService.addListener(_relayChange);
+    _announcementService.addListener(_relayChange);
+    favoriteActionsBinding.addListener(_relayChange);
+    _sourceService.addListener(_handleSourceChanged);
+  }
+
+  static const MethodChannel _mediaChannel = MethodChannel(
+    'hazuki.comics/media',
+  );
+
+  final SourceHomeGateway _sourceService;
+  final SourceSwitchGateway _sourceSwitchService;
+  final SourceImageGateway _imageService;
+  final HomeProfileController _profileController;
+  final HomeShellController _shellController;
+  final DiscoverDailyRecommendationService _dailyRecommendationService;
+  final AnnouncementController _announcementService;
+  final GlobalKey<ScaffoldState> scaffoldKey;
+  final FavoritePageActionsBinding favoriteActionsBinding;
+  bool _disposed = false;
+  late String? _lastSourceKey;
+  String? _lastSourceRevision;
+  // 标记新源尚未初始化完成，需要在初始化后再次同步用户信息
+  bool _awaitingSourceInit = false;
+  BuildContext? _context;
+
+  String? get avatarUrl => _profileController.avatarUrl;
+  String get username => _profileController.username;
+  bool get autoCheckInEnabled => _profileController.autoCheckInEnabled;
+  bool get checkInBusy => _profileController.checkInBusy;
+  bool get checkedInToday => _profileController.checkedInToday;
+  bool get profileLoading => _profileController.profileLoading;
+  bool get isCheckInAvailable => _profileController.isCheckInAvailable;
+  int get authVersion => _profileController.authVersion;
+  bool get isLogged => _profileController.isLogged;
+  SourceHomeGateway get sourceService => _sourceService;
+  SourceSwitchGateway get sourceSwitchService => _sourceSwitchService;
+
+  int get currentIndex => _shellController.currentIndex;
+  double get discoverSearchMorphProgress =>
+      _shellController.discoverSearchMorphProgress;
+  FavoriteAppBarActionsState get favoriteAppBarActions =>
+      _shellController.favoriteAppBarActions;
+  bool get favoriteBackToTopVisible => favoriteActionsBinding.backToTopVisible;
+  DiscoverDailyRecommendationState get dailyRecommendationState =>
+      _dailyRecommendationService.state;
+  AnnouncementController get announcementService => _announcementService;
+
+  void start(BuildContext context) {
+    _context = context;
+    unawaited(syncUserProfile(context));
+    unawaited(loadFirstUseText(context));
+    unawaited(loadOtherSettings(context));
+    unawaited(_prewarmSourceRuntime(context));
+    if (_sourceService.isLogged) {
+      unawaited(_sourceService.warmUpFavoritesDebugInfo());
+    }
+  }
+
+  void handleWidgetUpdate(
+    BuildContext context, {
+    required Locale? oldLocale,
+    required Locale? newLocale,
+    required int oldRefreshTick,
+    required int newRefreshTick,
+  }) {
+    final oldLocaleCode = oldLocale?.languageCode;
+    final newLocaleCode = newLocale?.languageCode;
+    if (oldLocaleCode != newLocaleCode) {
+      unawaited(loadFirstUseText(context));
+      unawaited(syncUserProfile(context));
+    }
+    if (oldRefreshTick != newRefreshTick) {
+      unawaited(syncUserProfile(context));
+      unawaited(loadOtherSettings(context));
+    }
+  }
+
+  Future<void> syncUserProfile(BuildContext context) async {
+    await _profileController.syncUserProfile(context);
+  }
+
+  Future<void> loadFirstUseText(BuildContext context) async {
+    await _profileController.loadFirstUseText(context);
+  }
+
+  Future<void> loadOtherSettings(BuildContext context) async {
+    await _profileController.loadOtherSettings(context);
+    final enabled = await _dailyRecommendationService.loadEnabled();
+    await _dailyRecommendationService.ensurePrepared(enabled: enabled);
+    _relayChange();
+  }
+
+  Future<void> performCheckIn(
+    BuildContext context, {
+    required bool triggeredAutomatically,
+  }) async {
+    await _profileController.performCheckIn(
+      context,
+      triggeredAutomatically: triggeredAutomatically,
+    );
+  }
+
+  Future<bool> handleWillPop(BuildContext context) {
+    return _shellController.handleWillPop(
+      context: context,
+      scaffoldKey: scaffoldKey,
+    );
+  }
+
+  Future<void> handleDestinationSelected(int index) async {
+    if (currentIndex == index) {
+      return;
+    }
+
+    await _shellController.handleDestinationSelected(index);
+  }
+
+  Future<void> changeFavoriteSortOrder(String order) {
+    return favoriteActionsBinding.changeSortOrder(order);
+  }
+
+  Future<void> createFavoriteFolder() {
+    return favoriteActionsBinding.createFolder();
+  }
+
+  Future<void> toggleFavoriteMode() {
+    return favoriteActionsBinding.toggleMode();
+  }
+
+  Future<void> scrollFavoriteToTop() {
+    return favoriteActionsBinding.scrollToTop();
+  }
+
+  void handleDiscoverSearchMorphProgressChanged(double progress) {
+    _shellController.handleDiscoverSearchMorphProgressChanged(progress);
+  }
+
+  void handleFavoriteAppBarActionsChanged(FavoriteAppBarActionsState state) {
+    _shellController.handleFavoriteAppBarActionsChanged(state);
+  }
+
+  HomeProfileFlow createProfileFlow(
+    BuildContext context, {
+    required bool Function() isMounted,
+  }) {
+    return HomeProfileFlow(
+      context: context,
+      isMounted: isMounted,
+      profileController: _profileController,
+      sourceService: _sourceService,
+      imageService: _imageService,
+      mediaChannel: _mediaChannel,
+      syncUserProfile: () => syncUserProfile(context),
+    );
+  }
+
+  void _relayChange() {
+    if (_disposed) return;
+
+    if (SchedulerBinding.instance.schedulerPhase ==
+        SchedulerPhase.persistentCallbacks) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (!_disposed) notifyListeners();
+      });
+    } else {
+      notifyListeners();
+    }
+  }
+
+  void _handleSourceChanged() {
+    final nextSourceKey = _sourceService.activeSourceKey;
+    // Login can replace the runtime while keeping the source key and plugin
+    // revision unchanged. Track that initialization cycle as well as switches.
+    if (!_sourceService.isInitialized &&
+        !_sourceService.runtimeState.hasFailure &&
+        !_sourceService.runtimeState.isWaitingForRestart) {
+      _awaitingSourceInit = true;
+    }
+    if (nextSourceKey != _lastSourceKey ||
+        _lastSourceRevision != _sourceService.sourceRevision) {
+      // 源发生切换，记录状态并立即同步（此时新源可能未初始化）
+      _lastSourceKey = nextSourceKey;
+      _lastSourceRevision = _sourceService.sourceRevision;
+      _awaitingSourceInit = !_sourceService.isInitialized;
+      _profileController.resetStartupCheckInAttempt();
+      _profileController.markSourceChanged();
+      final context = _context;
+      if (context != null && context.mounted) {
+        unawaited(syncUserProfile(context));
+        unawaited(loadOtherSettings(context));
+      }
+    } else if (_awaitingSourceInit &&
+        (_sourceService.isInitialized ||
+            _sourceService.runtimeState.hasFailure ||
+            _sourceService.runtimeState.isWaitingForRestart)) {
+      // 初始化结束后重新同步，失败时也要结束资料加载状态。
+      _awaitingSourceInit = false;
+      _profileController.markSourceChanged();
+      final context = _context;
+      if (context != null && context.mounted) {
+        unawaited(syncUserProfile(context));
+        unawaited(loadOtherSettings(context));
+      }
+    }
+    _relayChange();
+  }
+
+  Future<void> _prewarmSourceRuntime(BuildContext context) async {
+    try {
+      await _sourceService.prewarmInBackground();
+    } catch (_) {
+      // Synchronize terminal runtime state even when startup prewarming fails.
+    }
+    if (!context.mounted) {
+      return;
+    }
+    await syncUserProfile(context);
+    if (_sourceService.isLogged) {
+      unawaited(_sourceService.warmUpFavoritesDebugInfo());
+    }
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _dailyRecommendationService.removeListener(_relayChange);
+    _announcementService.removeListener(_relayChange);
+    favoriteActionsBinding.removeListener(_relayChange);
+    _sourceService.removeListener(_handleSourceChanged);
+    _profileController
+      ..removeListener(_relayChange)
+      ..dispose();
+    _shellController
+      ..removeListener(_relayChange)
+      ..dispose();
+    super.dispose();
+  }
+}

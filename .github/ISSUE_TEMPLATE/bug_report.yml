@@ -1,0 +1,33 @@
+
+name: Bug 反馈
+description: 报告使用中遇到的问题
+title: "[Bug]: "
+labels: ["bug"]
+
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 请描述遇到的问题，以及如何复现。
+      placeholder: |
+        遇到了什么问题？
+        如何触发这个问题？
+    validations:
+      required: true
+
+  - type: input
+    id: app_version
+    attributes:
+      label: App 版本
+      placeholder: 例如：1.2.3
+    validations:
+      required: true
+
+  - type: textarea
+    id: attachments
+    attributes:
+      label: 截图或日志（可选）
+      description: 如有截图、录屏或错误日志，可以在这里上传。
+    validations:
+      required: false

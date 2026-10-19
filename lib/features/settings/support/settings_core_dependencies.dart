@@ -1,0 +1,44 @@
+import 'package:hazuki/shared/software_update/software_update_dialog_presenter.dart';
+import 'package:hazuki/services/cloud_sync_service.dart';
+import 'package:hazuki/services/comment_filter_service.dart';
+import 'package:hazuki/services/discover_daily_recommendation_service.dart';
+import 'package:hazuki/services/manga_download/manga_download_service.dart';
+import 'package:hazuki/services/password_lock_service.dart';
+import 'package:hazuki/services/software_update/software_update_service.dart';
+import 'package:hazuki/services/source/source_capabilities.dart';
+
+class SettingsCoreDependencies {
+  const SettingsCoreDependencies({
+    required this.sourceSettings,
+    required this.sourceDebug,
+    required this.passwordLock,
+    required this.softwareUpdate,
+    required this.softwareUpdateDialog,
+    required this.cloudSync,
+    required this.commentFilter,
+    required this.dailyRecommendation,
+    required this.downloader,
+    required this.sourceRuntime,
+    required this.sourceSelection,
+    required this.sourceAdvanced,
+    required this.sourceScript,
+    required this.sourceUpdate,
+    this.sourcePlugins,
+  });
+
+  final SourceSettingsGateway sourceSettings;
+  final SourceDebugGateway sourceDebug;
+  final PasswordLockService passwordLock;
+  final SoftwareUpdateService softwareUpdate;
+  final SoftwareUpdateDialogPresenter softwareUpdateDialog;
+  final CloudSyncService cloudSync;
+  final CommentFilterService commentFilter;
+  final DiscoverDailyRecommendationService dailyRecommendation;
+  final MangaDownloadService downloader;
+  final SourceRuntimeGateway sourceRuntime;
+  final SourceSelectionGateway sourceSelection;
+  final SourceAdvancedGateway sourceAdvanced;
+  final SourceScriptGateway sourceScript;
+  final SourceUpdateGateway sourceUpdate;
+  final SourcePluginGateway? sourcePlugins;
+}

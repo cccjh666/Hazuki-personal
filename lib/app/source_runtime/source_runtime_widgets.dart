@@ -1,0 +1,304 @@
+import 'package:flutter/material.dart';
+import 'package:hazuki/app/service_locator.dart';
+
+import '../../l10n/l10n.dart';
+import '../../services/source/source_capabilities.dart';
+import 'source_runtime_dialog_view_support.dart';
+
+enum SourceUpdateDialogAction { skipToday, cancel, downloaded }
+
+class SourceUpdateDialogCard extends StatefulWidget {
+  const SourceUpdateDialogCard({
+    super.key,
+    required this.check,
+    required this.dismissible,
+    required this.onDownloadCompleted,
+  });
+
+  final SourceVersionCheckResult check;
+  final ValueNotifier<bool> dismissible;
+  final VoidCallback onDownloadCompleted;
+
+  @override
+  State<SourceUpdateDialogCard> createState() => _SourceUpdateDialogCardState();
+}
+
+class _SourceUpdateDialogCardState extends State<SourceUpdateDialogCard> {
+  _SourceUpdateDialogPhase _phase = _SourceUpdateDialogPhase.available;
+  double _progress = 0;
+  bool _indeterminate = true;
+  String? _errorText;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = l10n(context);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
+    final restartTitle = strings.sourceUpdateRestartTitle;
+    final restartMessage = strings.sourceUpdateRestartMessage;
+    final localVersionLabel = strings.sourceUpdateLocalLabel;
+
+    const dialogMaxWidth = 360.0;
+    final availableTitle = strings.sourceUpdateDiscoveredVersion(
+      widget.check.remoteVersion,
+    );
+    final sourceName = widget.check.sourceName;
+    final downloadingMessage = strings.sourceUpdateDownloadingMessage;
+    final restartHint = strings.sourceUpdateRestartHint;
+
+    return Dialog(
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeInOutCubic,
+        width: double.infinity,
+        constraints: const BoxConstraints(maxWidth: dialogMaxWidth),
+        padding: _resolveDialogPadding(),
+        child: AnimatedSize(
+          duration: const Duration(milliseconds: 320),
+          curve: Curves.easeInOutCubic,
+          alignment: Alignment.center,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 280),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            layoutBuilder: (currentChild, previousChildren) {
+              return Stack(
+                alignment: Alignment.center,
+                children: [...previousChildren, ?currentChild],
+              );
+            },
+            transitionBuilder: (child, animation) {
+              final curved = CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOutCubic,
+                reverseCurve: Curves.easeInCubic,
+              );
+              return ClipRect(
+                child: FadeTransition(
+                  opacity: curved,
+                  child: SizeTransition(
+                    sizeFactor: curved,
+                    axis: Axis.vertical,
+                    alignment: const AlignmentDirectional(-1.0, 0.0),
+                    child: child,
+                  ),
+                ),
+              );
+            },
+            child: switch (_phase) {
+              _SourceUpdateDialogPhase.available => Column(
+                key: const ValueKey<String>('source-update-phase-available'),
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  buildSourceUpdateHeader(
+                    colorScheme: colorScheme,
+                    textTheme: textTheme,
+                    icon: Icons.system_update_alt_rounded,
+                    title: availableTitle,
+                    subtitle: sourceName,
+                    accent: colorScheme.primary,
+                  ),
+                  const SizedBox(height: 18),
+                  buildSourceUpdatePanel(
+                    colorScheme: colorScheme,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        buildSourceUpdateVersionRow(
+                          colorScheme: colorScheme,
+                          textTheme: textTheme,
+                          icon: Icons.history_rounded,
+                          accent: colorScheme.onSurfaceVariant,
+                          label: localVersionLabel,
+                          value: widget.check.localVersion,
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (_errorText != null) ...[
+                    const SizedBox(height: 12),
+                    buildSourceUpdateErrorCard(
+                      colorScheme: colorScheme,
+                      textTheme: textTheme,
+                      message: _errorText!,
+                    ),
+                  ],
+                  const SizedBox(height: 18),
+                  FilledButton(
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    onPressed: _downloadUpdate,
+                    child: Text(strings.sourceUpdateDownload),
+                  ),
+                  const SizedBox(height: 8),
+                  OverflowBar(
+                    alignment: MainAxisAlignment.end,
+                    spacing: 4,
+                    overflowSpacing: 4,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.of(
+                          context,
+                        ).pop(SourceUpdateDialogAction.skipToday),
+                        child: Text(strings.comicDetailRemindLaterToday),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.of(
+                          context,
+                        ).pop(SourceUpdateDialogAction.cancel),
+                        child: Text(strings.commonCancel),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              _SourceUpdateDialogPhase.downloading =>
+                buildSourceUpdateDownloadingScene(
+                  context: context,
+                  colorScheme: colorScheme,
+                  textTheme: textTheme,
+                  title: strings.sourceUpdateDownloading,
+                  subtitle: downloadingMessage,
+                  badgeText: strings.sourceUpdateRemoteVersion(
+                    widget.check.remoteVersion,
+                  ),
+                  restartHint: restartHint,
+                  indeterminate: _indeterminate,
+                  progress: _progress,
+                ),
+              _SourceUpdateDialogPhase.restartRequired => Column(
+                key: const ValueKey<String>('source-update-phase-restart'),
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  buildSourceUpdateHeader(
+                    colorScheme: colorScheme,
+                    textTheme: textTheme,
+                    icon: Icons.restart_alt_rounded,
+                    title: restartTitle,
+                    subtitle: restartMessage,
+                    accent: colorScheme.tertiary,
+                    badgeText: strings.sourceUpdateRemoteVersion(
+                      widget.check.remoteVersion,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  buildSourceUpdatePanel(
+                    colorScheme: colorScheme,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        buildSourceUpdateVersionRow(
+                          colorScheme: colorScheme,
+                          textTheme: textTheme,
+                          icon: Icons.cloud_done_rounded,
+                          accent: colorScheme.tertiary,
+                          label: strings.sourceUpdateCloudLabel,
+                          value: widget.check.remoteVersion,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          restartHint,
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            height: 1.45,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  FilledButton(
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    onPressed: () => Navigator.of(
+                      context,
+                    ).pop(SourceUpdateDialogAction.downloaded),
+                    child: Text(strings.commonConfirm),
+                  ),
+                ],
+              ),
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  EdgeInsets _resolveDialogPadding() {
+    switch (_phase) {
+      case _SourceUpdateDialogPhase.available:
+        return const EdgeInsets.fromLTRB(20, 20, 20, 18);
+      case _SourceUpdateDialogPhase.downloading:
+        return const EdgeInsets.fromLTRB(20, 18, 20, 18);
+      case _SourceUpdateDialogPhase.restartRequired:
+        return const EdgeInsets.fromLTRB(20, 20, 20, 20);
+    }
+  }
+
+  void _updateDialogState(VoidCallback updater) {
+    if (!mounted) {
+      return;
+    }
+    setState(updater);
+  }
+
+  Future<void> _downloadUpdate() async {
+    widget.dismissible.value = false;
+    _updateDialogState(() {
+      _phase = _SourceUpdateDialogPhase.downloading;
+      _errorText = null;
+      _progress = 0;
+      _indeterminate = true;
+    });
+
+    final ok = await sl<SourceUpdateGateway>().downloadActiveSourceAndReload(
+      onProgress: (received, total) {
+        _updateDialogState(() {
+          if (total > 0) {
+            _indeterminate = false;
+            _progress = (received / total).clamp(0.0, 1.0);
+          } else {
+            _indeterminate = true;
+          }
+        });
+      },
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    if (ok) {
+      widget.onDownloadCompleted();
+      widget.dismissible.value = true;
+      _updateDialogState(() {
+        _phase = _SourceUpdateDialogPhase.restartRequired;
+        _indeterminate = false;
+        _progress = 1;
+      });
+      return;
+    }
+
+    widget.dismissible.value = false;
+    _updateDialogState(() {
+      _phase = _SourceUpdateDialogPhase.available;
+      _errorText = l10n(context).sourceUpdateDownloadFailed;
+    });
+  }
+}
+
+enum _SourceUpdateDialogPhase { available, downloading, restartRequired }

@@ -1,0 +1,245 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:hazuki/l10n/app_localizations.dart';
+import 'package:hazuki/models/hazuki_models.dart';
+import 'package:hazuki/widgets/widgets.dart';
+
+import '../support/search_shared.dart';
+
+import 'search_id_extract_pill.dart';
+
+class SearchResultsAppBar extends StatelessWidget
+    implements PreferredSizeWidget {
+  const SearchResultsAppBar({
+    super.key,
+    required this.title,
+    required this.orderLabels,
+    required this.currentOrderLabel,
+    required this.searchOrder,
+    required this.onOrderMenuOpened,
+    required this.onOrderSelected,
+    this.showOrderControl = true,
+  });
+
+  final Widget title;
+  final Map<String, String> orderLabels;
+  final String currentOrderLabel;
+  final String searchOrder;
+  final VoidCallback onOrderMenuOpened;
+  final ValueChanged<String> onOrderSelected;
+  final bool showOrderControl;
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+
+  @override
+  Widget build(BuildContext context) {
+    return hazukiFrostedAppBar(
+      context: context,
+      enableBlur: false,
+      title: title,
+      actions: [
+        if (showOrderControl)
+          HazukiFrostedMenuButton<String>(
+            tooltip: currentOrderLabel,
+            onOpened: onOrderMenuOpened,
+            onSelected: onOrderSelected,
+            selected: searchOrder,
+            options: [
+              for (final entry in orderLabels.entries)
+                HazukiFrostedMenuOption<String>(
+                  value: entry.key,
+                  label: entry.value,
+                ),
+            ],
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    currentOrderLabel,
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.swap_vert, size: 18),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class SearchResultsBody extends StatelessWidget {
+  const SearchResultsBody({
+    super.key,
+    required this.scrollController,
+    required this.searchComics,
+    required this.searchLoadingMore,
+    required this.searchErrorMessage,
+    required this.resultState,
+    required this.onRefresh,
+    required this.onScrollNotification,
+    required this.itemBuilder,
+    required this.gridItemBuilder,
+    required this.comicLayout,
+    required this.onRetryPartialError,
+  });
+
+  final ScrollController scrollController;
+  final List<ExploreComic> searchComics;
+  final bool searchLoadingMore;
+  final String? searchErrorMessage;
+  final Widget resultState;
+  final Future<void> Function() onRefresh;
+  final bool Function(ScrollNotification notification) onScrollNotification;
+  final Widget Function(ExploreComic comic, int index) itemBuilder;
+  final Widget Function(ExploreComic comic, int index, int coverCacheWidth)
+  gridItemBuilder;
+  final SearchComicLayout comicLayout;
+  final Future<void> Function() onRetryPartialError;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppLocalizations.of(context)!;
+    return HazukiPullToRefresh(
+      onRefresh: onRefresh,
+      child: NotificationListener<ScrollNotification>(
+        onNotification: onScrollNotification,
+        child: ListView(
+          controller: scrollController,
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: ClampingScrollPhysics(),
+          ),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          children: [
+            resultState,
+            if (searchComics.isNotEmpty &&
+                comicLayout == SearchComicLayout.list) ...[
+              for (int i = 0; i < searchComics.length; i++)
+                itemBuilder(searchComics[i], i),
+            ] else if (searchComics.isNotEmpty)
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  const spacing = 10.0;
+                  final coverWidth = (constraints.maxWidth - spacing * 2) / 3;
+                  final coverCacheWidth =
+                      (coverWidth * MediaQuery.devicePixelRatioOf(context))
+                          .round();
+                  return GridView.builder(
+                    key: const ValueKey('search-results-grid3'),
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: searchComics.length,
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          mainAxisSpacing: spacing,
+                          crossAxisSpacing: spacing,
+                          childAspectRatio: 0.57,
+                        ),
+                    itemBuilder: (context, index) => gridItemBuilder(
+                      searchComics[index],
+                      index,
+                      coverCacheWidth,
+                    ),
+                  );
+                },
+              ),
+            if (searchLoadingMore) const HazukiLoadMoreFooter(),
+            if (searchErrorMessage != null && searchComics.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Material(
+                  color: Theme.of(context).colorScheme.errorContainer,
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          searchErrorMessage!,
+                          style: TextStyle(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onErrorContainer,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        FilledButton.tonal(
+                          onPressed: () => unawaited(onRetryPartialError()),
+                          child: Text(strings.commonRetry),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            SizedBox(height: searchLoadingMore ? 16 : 80),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class SearchResultsBackToTopButton extends StatelessWidget {
+  const SearchResultsBackToTopButton({
+    super.key,
+    required this.visible,
+    required this.onPressed,
+  });
+
+  final bool visible;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      right: 16,
+      bottom: 16,
+      child: IgnorePointer(
+        ignoring: !visible,
+        child: AnimatedSlide(
+          offset: visible ? Offset.zero : const Offset(0, 1.2),
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          child: AnimatedOpacity(
+            opacity: visible ? 1 : 0,
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            child: FloatingActionButton(
+              onPressed: onPressed,
+              child: const Icon(Icons.keyboard_arrow_up),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class SearchResultsIdExtractPill extends StatelessWidget {
+  const SearchResultsIdExtractPill({
+    super.key,
+    required this.extractedId,
+    required this.onApply,
+  });
+
+  final String? extractedId;
+  final VoidCallback onApply;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      left: 16,
+      right: 16,
+      bottom: 12,
+      child: SearchIdExtractPill(extractedId: extractedId, onApply: onApply),
+    );
+  }
+}

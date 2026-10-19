@@ -1,0 +1,89 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:hazuki/app/app_settings_store.dart';
+import 'package:hazuki/app/appearance_settings.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  test(
+    'liquid glass is enabled by default and persists its preference',
+    () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      const store = HazukiAppSettingsStore();
+
+      final initial = await store.loadAppearance();
+      expect(initial.liquidGlassEnabled, isTrue);
+
+      final disabled = initial.copyWith(liquidGlassEnabled: false);
+      await store.saveAppearance(disabled);
+
+      final persisted = await store.loadAppearance();
+      expect(persisted.liquidGlassEnabled, isFalse);
+    },
+  );
+
+  test('liquid glass participates in appearance setting equality', () {
+    const enabled = AppearanceSettingsData(
+      themeMode: ThemeMode.system,
+      oledPureBlack: false,
+      dynamicColor: false,
+      presetIndex: hazukiDefaultAppearancePresetIndex,
+      displayModeRaw: 'native:auto',
+      comicDetailDynamicColor: false,
+      useSystemFont: true,
+    );
+
+    expect(enabled.copyWith(liquidGlassEnabled: false), isNot(enabled));
+  });
+
+  test('discover section layout defaults to horizontal and persists', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    const store = HazukiAppSettingsStore();
+
+    final initial = await store.loadAppearance();
+    expect(initial.discoverSectionLayout, DiscoverSectionLayout.horizontal);
+
+    await store.saveAppearance(
+      initial.copyWith(discoverSectionLayout: DiscoverSectionLayout.grid3),
+    );
+
+    final persisted = await store.loadAppearance();
+    expect(persisted.discoverSectionLayout, DiscoverSectionLayout.grid3);
+  });
+
+  test(
+    'favorite layout defaults to list and persists all four layouts',
+    () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      const store = HazukiAppSettingsStore();
+      final initial = await store.loadAppearance();
+      expect(initial.favoriteLayout, FavoriteLayout.list);
+
+      for (final layout in FavoriteLayout.values) {
+        final settings = initial.copyWith(favoriteLayout: layout);
+        await store.saveAppearance(settings);
+        final restored = await store.loadAppearance();
+        expect(restored, settings);
+        expect(
+          restored.copyWith(themeMode: ThemeMode.dark).favoriteLayout,
+          layout,
+        );
+        if (layout != FavoriteLayout.list) {
+          expect(settings, isNot(initial));
+        }
+      }
+    },
+  );
+
+  test('unknown favorite layout falls back to the existing list', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{
+      'appearance_favorite_layout': 'unknown',
+    });
+    expect(
+      (await const HazukiAppSettingsStore().loadAppearance()).favoriteLayout,
+      FavoriteLayout.list,
+    );
+  });
+}
