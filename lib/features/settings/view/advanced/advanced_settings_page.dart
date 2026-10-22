@@ -44,7 +44,6 @@ class _AdvancedSettingsPageState extends State<AdvancedSettingsPage> {
   bool _softwareLogCaptureEnabled = false;
   bool _hasSourceBackup = false;
   bool _autoSourceUpdateCheckEnabled = true;
-  bool _autoSoftwareUpdateCheckEnabled = true;
   SoftwareUpdateSource _softwareUpdateSource = SoftwareUpdateSource.jsDelivr;
   bool _loading = true;
 
@@ -83,8 +82,7 @@ class _AdvancedSettingsPageState extends State<AdvancedSettingsPage> {
       _noImageMode = prefs.getBool(hazukiNoImageModePreferenceKey) ?? false;
       _softwareLogCaptureEnabled = softwareLogCaptureEnabled;
       _hasSourceBackup = hasSourceBackup;
-      _autoSourceUpdateCheckEnabled = updateChecks.source;
-      _autoSoftwareUpdateCheckEnabled = updateChecks.software;
+      _autoSourceUpdateCheckEnabled = updateChecks;
       _softwareUpdateSource = softwareUpdateSource;
       _loading = false;
     });
@@ -108,11 +106,6 @@ class _AdvancedSettingsPageState extends State<AdvancedSettingsPage> {
   Future<void> _toggleAutoSourceUpdateCheck(bool value) async {
     setState(() => _autoSourceUpdateCheckEnabled = value);
     await OtherSettingsActions.toggleAutoSourceUpdateCheck(context, value);
-  }
-
-  Future<void> _toggleAutoSoftwareUpdateCheck(bool value) async {
-    setState(() => _autoSoftwareUpdateCheckEnabled = value);
-    await OtherSettingsActions.toggleAutoSoftwareUpdateCheck(context, value);
   }
 
   Future<void> _refreshSourceBackupState() async {
@@ -231,7 +224,6 @@ class _AdvancedSettingsPageState extends State<AdvancedSettingsPage> {
           noImageMode: _noImageMode,
           softwareLogCaptureEnabled: _softwareLogCaptureEnabled,
           autoSourceUpdateCheckEnabled: _autoSourceUpdateCheckEnabled,
-          autoSoftwareUpdateCheckEnabled: _autoSoftwareUpdateCheckEnabled,
           softwareUpdateSource: _softwareUpdateSource,
           hasSourceBackup: _hasSourceBackup,
           onRedownloadComicSource:
@@ -256,7 +248,6 @@ class _AdvancedSettingsPageState extends State<AdvancedSettingsPage> {
           onToggleNoImageMode: _toggleNoImageMode,
           onToggleSoftwareLogCaptureEnabled: _toggleSoftwareLogCaptureEnabled,
           onToggleAutoSourceUpdateCheck: _toggleAutoSourceUpdateCheck,
-          onToggleAutoSoftwareUpdateCheck: _toggleAutoSoftwareUpdateCheck,
           onSoftwareUpdateSourceChanged: _setSoftwareUpdateSource,
           onOpenComicSourceEditor: _openComicSourceEditor,
           onRestoreComicSource: _restoreComicSource,

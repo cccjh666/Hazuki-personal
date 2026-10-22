@@ -1,18 +1,9 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hazuki/features/settings/view/about_page.dart';
 import 'package:hazuki/features/settings/view/about_page_content.dart';
 import 'package:hazuki/l10n/app_localizations.dart';
-import 'package:hazuki/services/software_update/software_update_service.dart';
-import 'package:hazuki/shared/software_update/software_update_dialog_presenter.dart';
-import 'package:mocktail/mocktail.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-
-class _MockUpdates extends Mock implements SoftwareUpdateService {}
-
-class _MockUpdateDialog extends Mock implements SoftwareUpdateDialogPresenter {}
 
 Widget _app(
   Widget page, {
@@ -44,10 +35,6 @@ Future<void> _scrollTo(WidgetTester tester, Finder target) async {
 }
 
 void main() {
-  late _MockUpdates updates;
-  late _MockUpdateDialog dialog;
-
-  setUpAll(() => registerFallbackValue(() => true));
   setUp(() {
     PackageInfo.setMockInitialValues(
       appName: 'Hazuki',
@@ -56,12 +43,9 @@ void main() {
       buildNumber: '20',
       buildSignature: '',
     );
-    updates = _MockUpdates();
-    dialog = _MockUpdateDialog();
   });
 
-  Widget page() =>
-      AboutPage(softwareUpdateService: updates, softwareUpdateDialog: dialog);
+  Widget page() => const AboutPage();
 
   for (final scenario in [
     (width: 320.0, scale: 1.0, locale: 'en', brightness: Brightness.light),
@@ -103,10 +87,26 @@ void main() {
           expect(find.text(label).hitTestable(), findsOneWidget);
           expect(tester.takeException(), isNull);
         }
-        verifyNever(updates.checkForUpdates);
       },
     );
   }
+
+  // 这个 fork 移除了应用自身的更新检查：关于页不应再出现任何「检查更新」入口，
+  // 否则用户可能被引导去装官方签名的新包，覆盖掉本地修改版。
+  testWidgets('about page has no update entry point', (tester) async {
+    await tester.pumpWidget(_app(page()));
+    await tester.pumpAndSettle();
+    final strings = AppLocalizations.of(
+      tester.element(find.byType(AboutPage)),
+    )!;
+
+    expect(find.text(strings.aboutCheckUpdateTitle), findsNothing);
+    expect(find.text(strings.aboutCheckSoftwareUpdateSubtitle), findsNothing);
+    expect(find.byIcon(Icons.system_update_alt_rounded), findsNothing);
+    expect(find.byType(FilledButton), findsNothing);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('disclaimer opens, closes, and licenses show the real version', (
     tester,
@@ -135,53 +135,6 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('update button prevents duplicate checks and opens the update', (
-    tester,
-  ) async {
-    const check = SoftwareUpdateCheckResult(
-      currentVersion: '1.1.9',
-      latestVersion: '1.2.0',
-      releaseUrl: 'https://example.com/releases/1.2.0',
-      hasUpdate: true,
-    );
-    final pending = Completer<SoftwareUpdateCheckResult?>();
-    when(updates.checkForUpdates).thenAnswer((_) => pending.future);
-    await tester.pumpWidget(_app(page()));
-    await tester.pumpAndSettle();
-    final context = tester.element(find.byType(AboutPage));
-    when(
-      () => dialog.showForCheck(
-        dialogContext: context,
-        isMounted: any(named: 'isMounted'),
-        skipPrefsKey: 'software_update_skip_date',
-        check: check,
-        respectSkipPreference: false,
-      ),
-    ).thenAnswer((_) async => null);
-    final button = find.byType(FilledButton);
-    await tester.tap(button);
-    await tester.pump();
-    expect(tester.widget<FilledButton>(button).onPressed, isNull);
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    await tester.tap(button);
-    verify(updates.checkForUpdates).called(1);
-
-    pending.complete(check);
-    await tester.pumpAndSettle();
-    expect(tester.widget<FilledButton>(button).onPressed, isNotNull);
-    expect(find.byType(CircularProgressIndicator), findsNothing);
-    verify(
-      () => dialog.showForCheck(
-        dialogContext: context,
-        isMounted: any(named: 'isMounted'),
-        skipPrefsKey: 'software_update_skip_date',
-        check: check,
-        respectSkipPreference: false,
-      ),
-    ).called(1);
-    expect(tester.takeException(), isNull);
-  });
-
   testWidgets('project and feedback entries invoke their own actions', (
     tester,
   ) async {
@@ -192,8 +145,6 @@ void main() {
         Scaffold(
           body: AboutPageContent(
             currentVersion: '1.1.9',
-            checkingUpdate: false,
-            onCheckUpdate: () {},
             onOpenProject: () => projects++,
             onOpenFeedback: () => feedback++,
             onOpenDisclaimer: () {},

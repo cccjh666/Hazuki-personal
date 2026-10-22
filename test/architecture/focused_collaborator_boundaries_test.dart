@@ -111,24 +111,6 @@ void main() {
     expect(contract, isNot(contains('cloud_sync/')));
   });
 
-  test(
-    'update dialogs keep reminder persistence and dates behind collaborators',
-    () {
-      final presenter = File(
-        'lib/shared/software_update/software_update_dialog_presenter.dart',
-      ).readAsStringSync();
-      expect(presenter, isNot(contains('package:shared_preferences/')));
-      expect(presenter, isNot(contains('dart:convert')));
-      expect(presenter, isNot(contains('DateTime.now')));
-      final policy = File(
-        'lib/services/software_update/software_update_reminder_policy.dart',
-      ).readAsStringSync();
-      expect(policy, isNot(contains('package:flutter/')));
-      expect(policy, isNot(contains('package:shared_preferences/')));
-      expect(policy, isNot(contains('software_update_dialog_presenter.dart')));
-    },
-  );
-
   test('reader image collaborators do not depend on reader orchestration', () {
     for (final name in [
       'reader_image_loader.dart',

@@ -1,4 +1,3 @@
-import 'package:hazuki/shared/software_update/software_update_dialog_presenter.dart';
 import 'package:hazuki/services/cloud_sync_service.dart';
 import 'package:hazuki/services/comment_filter_service.dart';
 import 'package:hazuki/services/discover_daily_recommendation_service.dart';
@@ -13,7 +12,6 @@ class SettingsCoreDependencies {
     required this.sourceDebug,
     required this.passwordLock,
     required this.softwareUpdate,
-    required this.softwareUpdateDialog,
     required this.cloudSync,
     required this.commentFilter,
     required this.dailyRecommendation,
@@ -29,8 +27,9 @@ class SettingsCoreDependencies {
   final SourceSettingsGateway sourceSettings;
   final SourceDebugGateway sourceDebug;
   final PasswordLockService passwordLock;
+
+  /// 只用于「更新源」（插件市场 / 插件配置 / 公告共用），不再做应用更新检查。
   final SoftwareUpdateService softwareUpdate;
-  final SoftwareUpdateDialogPresenter softwareUpdateDialog;
   final CloudSyncService cloudSync;
   final CommentFilterService commentFilter;
   final DiscoverDailyRecommendationService dailyRecommendation;

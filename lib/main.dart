@@ -1,8 +1,6 @@
 import 'package:hazuki/services/source/runtime/source_runtime_registry.dart';
 import 'package:hazuki/shared/source_presentation.dart';
 import 'package:hazuki/widgets/windows_comic_detail_presentation_scope.dart';
-import 'package:hazuki/services/software_update/software_update_service.dart';
-import 'package:hazuki/services/software_update/software_update_download_service.dart';
 import 'dart:async';
 
 import 'package:dynamic_color/dynamic_color.dart';
@@ -25,7 +23,6 @@ import 'app/source_runtime/source_runtime_bootstrap_overlay.dart';
 import 'app/source_runtime/source_update_dialog_support.dart';
 import 'app/theme/theme_reveal_support.dart';
 import 'app/windows/windows_title_bar_controller.dart';
-import 'app/software_update/software_update_dialog_support.dart';
 import 'l10n/app_localizations.dart';
 import 'l10n/l10n.dart';
 import 'package:hazuki/features/home/home.dart'
@@ -118,11 +115,6 @@ class _HazukiAppState extends State<HazukiApp>
       SourceRuntimeCoordinator();
   final SourceUpdateDialogSupport _sourceUpdateDialogSupport =
       const SourceUpdateDialogSupport();
-  final SoftwareUpdateDialogSupport _softwareUpdateDialogSupport =
-      SoftwareUpdateDialogSupport(
-        downloadService: sl<SoftwareUpdateDownloadService>(),
-        checkForUpdates: sl<SoftwareUpdateService>().checkForUpdates,
-      );
 
   late final HazukiThemeController _themeController;
   late final HazukiAppController _appController;
@@ -161,7 +153,6 @@ class _HazukiAppState extends State<HazukiApp>
       navigatorKey: _navigatorKey,
       sourceRuntimeCoordinator: _sourceRuntimeCoordinator,
       sourceUpdateDialogSupport: _sourceUpdateDialogSupport,
-      softwareUpdateDialogSupport: _softwareUpdateDialogSupport,
       isMounted: () => mounted,
     );
     _homeFeatureEntrypoints = buildHazukiHomeFeatureEntrypoints();

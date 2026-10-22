@@ -22,7 +22,6 @@ import '../../services/password_lock_service.dart';
 import '../../services/read_history_service.dart';
 import '../../services/reading_progress_service.dart';
 import '../../services/search_history_service.dart';
-import '../../services/software_update/software_update_download_service.dart';
 import '../../services/software_update/software_update_service.dart';
 import '../../services/source/source_capabilities.dart';
 import '../../services/storage/hazuki_database.dart';
@@ -131,11 +130,6 @@ void registerApplicationServices(GetIt services) {
   if (!services.isRegistered<PasswordLockService>()) {
     services.registerLazySingleton<PasswordLockService>(
       PasswordLockService.new,
-    );
-  }
-  if (!services.isRegistered<SoftwareUpdateDownloadService>()) {
-    services.registerLazySingleton<SoftwareUpdateDownloadService>(
-      SoftwareUpdateDownloadService.new,
     );
   }
   if (!services.isRegistered<SoftwareUpdateService>()) {

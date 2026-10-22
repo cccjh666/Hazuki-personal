@@ -13,7 +13,6 @@ class OtherSettingsSnapshot {
   const OtherSettingsSnapshot({
     required this.autoCheckInEnabled,
     required this.autoSourceUpdateCheckEnabled,
-    required this.autoSoftwareUpdateCheckEnabled,
     required this.aggregateSearchEnabled,
     required this.comicIdSearchEnhanceEnabled,
     required this.discoverDailyRecommendationEnabled,
@@ -24,7 +23,6 @@ class OtherSettingsSnapshot {
 
   final bool autoCheckInEnabled;
   final bool autoSourceUpdateCheckEnabled;
-  final bool autoSoftwareUpdateCheckEnabled;
   final bool aggregateSearchEnabled;
   final bool comicIdSearchEnhanceEnabled;
   final bool discoverDailyRecommendationEnabled;
@@ -35,7 +33,6 @@ class OtherSettingsSnapshot {
   OtherSettingsSnapshot copyWith({
     bool? autoCheckInEnabled,
     bool? autoSourceUpdateCheckEnabled,
-    bool? autoSoftwareUpdateCheckEnabled,
     bool? aggregateSearchEnabled,
     bool? comicIdSearchEnhanceEnabled,
     bool? discoverDailyRecommendationEnabled,
@@ -47,8 +44,6 @@ class OtherSettingsSnapshot {
       autoCheckInEnabled: autoCheckInEnabled ?? this.autoCheckInEnabled,
       autoSourceUpdateCheckEnabled:
           autoSourceUpdateCheckEnabled ?? this.autoSourceUpdateCheckEnabled,
-      autoSoftwareUpdateCheckEnabled:
-          autoSoftwareUpdateCheckEnabled ?? this.autoSoftwareUpdateCheckEnabled,
       aggregateSearchEnabled:
           aggregateSearchEnabled ?? this.aggregateSearchEnabled,
       comicIdSearchEnhanceEnabled:
@@ -67,7 +62,6 @@ class OtherSettingsSnapshot {
     return OtherSettingsSnapshot(
       autoCheckInEnabled: false,
       autoSourceUpdateCheckEnabled: true,
-      autoSoftwareUpdateCheckEnabled: true,
       aggregateSearchEnabled: false,
       comicIdSearchEnhanceEnabled: false,
       discoverDailyRecommendationEnabled: false,
@@ -81,17 +75,10 @@ class OtherSettingsSnapshot {
 class OtherSettingsActions {
   const OtherSettingsActions._();
 
-  static Future<({bool source, bool software})>
-  loadUpdateCheckSettings() async {
+  static Future<bool> loadUpdateCheckSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    return (
-      source:
-          prefs.getBool(hazukiAutoSourceUpdateCheckEnabledPreferenceKey) ??
-          true,
-      software:
-          prefs.getBool(hazukiAutoSoftwareUpdateCheckEnabledPreferenceKey) ??
-          true,
-    );
+    return prefs.getBool(hazukiAutoSourceUpdateCheckEnabledPreferenceKey) ??
+        true;
   }
 
   static Future<OtherSettingsSnapshot> loadSettings({
@@ -104,8 +91,7 @@ class OtherSettingsActions {
     return OtherSettingsSnapshot(
       autoCheckInEnabled:
           prefs.getBool(hazukiAutoCheckInEnabledPreferenceKey) ?? false,
-      autoSourceUpdateCheckEnabled: updateChecks.source,
-      autoSoftwareUpdateCheckEnabled: updateChecks.software,
+      autoSourceUpdateCheckEnabled: updateChecks,
       aggregateSearchEnabled:
           prefs.getBool(hazukiAggregateSearchEnabledPreferenceKey) ?? false,
       comicIdSearchEnhanceEnabled:
@@ -158,24 +144,6 @@ class OtherSettingsActions {
     await showHazukiPrompt(
       context,
       AppLocalizations.of(context)!.otherAutoUpdateUpdated,
-    );
-  }
-
-  static Future<void> toggleAutoSoftwareUpdateCheck(
-    BuildContext context,
-    bool value,
-  ) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(
-      hazukiAutoSoftwareUpdateCheckEnabledPreferenceKey,
-      value,
-    );
-    if (!context.mounted) {
-      return;
-    }
-    await showHazukiPrompt(
-      context,
-      AppLocalizations.of(context)!.otherAutoSoftwareUpdateUpdated,
     );
   }
 

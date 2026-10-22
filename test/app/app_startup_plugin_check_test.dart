@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hazuki/app/app_startup_coordinator.dart';
-import 'package:hazuki/app/software_update/software_update_dialog_support.dart';
 import 'package:hazuki/app/source_runtime/source_plugin_update_dialog_support.dart';
 import 'package:hazuki/app/source_runtime/source_runtime_coordinator.dart';
 import 'package:hazuki/app/source_runtime/source_update_dialog_support.dart';
@@ -14,8 +13,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 class _Runtime extends Mock implements SourceRuntimeCoordinator {}
 
 class _Plugins extends Mock implements SourcePluginGateway {}
-
-class _SoftwareDialogs extends Mock implements SoftwareUpdateDialogSupport {}
 
 void main() {
   testWidgets(
@@ -58,7 +55,6 @@ void main() {
         navigatorKey: navigator,
         sourceRuntimeCoordinator: runtime,
         sourceUpdateDialogSupport: const SourceUpdateDialogSupport(),
-        softwareUpdateDialogSupport: _SoftwareDialogs(),
         sourcePluginUpdateDialogSupport: SourcePluginUpdateDialogSupport(
           gateway: plugins,
         ),

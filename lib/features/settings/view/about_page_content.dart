@@ -7,8 +7,6 @@ class AboutPageContent extends StatelessWidget {
   const AboutPageContent({
     super.key,
     required this.currentVersion,
-    required this.checkingUpdate,
-    required this.onCheckUpdate,
     required this.onOpenProject,
     required this.onOpenFeedback,
     required this.onOpenDisclaimer,
@@ -16,8 +14,6 @@ class AboutPageContent extends StatelessWidget {
   });
 
   final String? currentVersion;
-  final bool checkingUpdate;
-  final VoidCallback onCheckUpdate;
   final VoidCallback onOpenProject;
   final VoidCallback onOpenFeedback;
   final VoidCallback onOpenDisclaimer;
@@ -83,39 +79,6 @@ class AboutPageContent extends StatelessWidget {
                         ),
                         const _AboutBadge(label: 'GPL-3.0'),
                       ],
-                    ),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.tonalIcon(
-                        onPressed: checkingUpdate ? null : onCheckUpdate,
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 14,
-                          ),
-                        ),
-                        icon: checkingUpdate
-                            ? const SizedBox.square(
-                                dimension: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(Icons.system_update_alt_rounded),
-                        label: Text(
-                          strings.aboutCheckUpdateTitle,
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      strings.aboutCheckSoftwareUpdateSubtitle,
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colors.onSurfaceVariant,
-                      ),
                     ),
                   ],
                 ),

@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_preferences.dart';
-import 'software_update/software_update_dialog_support.dart';
 import 'source_runtime/source_runtime_coordinator.dart';
 import 'source_runtime/source_runtime_widgets.dart';
 import 'source_runtime/source_update_dialog_support.dart';
@@ -16,7 +15,6 @@ class HazukiAppStartupCoordinator extends ChangeNotifier {
     required GlobalKey<NavigatorState> navigatorKey,
     required SourceRuntimeCoordinator sourceRuntimeCoordinator,
     required SourceUpdateDialogSupport sourceUpdateDialogSupport,
-    required SoftwareUpdateDialogSupport softwareUpdateDialogSupport,
     SourcePluginUpdateDialogSupport sourcePluginUpdateDialogSupport =
         const SourcePluginUpdateDialogSupport(),
     WindowsAdaptationNoticeDialogSupport windowsAdaptationNoticeDialogSupport =
@@ -25,19 +23,16 @@ class HazukiAppStartupCoordinator extends ChangeNotifier {
   }) : _navigatorKey = navigatorKey,
        _sourceRuntimeCoordinator = sourceRuntimeCoordinator,
        _sourceUpdateDialogSupport = sourceUpdateDialogSupport,
-       _softwareUpdateDialogSupport = softwareUpdateDialogSupport,
        _sourcePluginUpdateDialogSupport = sourcePluginUpdateDialogSupport,
        _windowsAdaptationNoticeDialogSupport =
            windowsAdaptationNoticeDialogSupport,
        _isMounted = isMounted;
 
   static const _sourceUpdateSkipDateKey = 'source_update_skip_date';
-  static const _softwareUpdateSkipDateKey = 'software_update_skip_date';
 
   final GlobalKey<NavigatorState> _navigatorKey;
   final SourceRuntimeCoordinator _sourceRuntimeCoordinator;
   final SourceUpdateDialogSupport _sourceUpdateDialogSupport;
-  final SoftwareUpdateDialogSupport _softwareUpdateDialogSupport;
   final SourcePluginUpdateDialogSupport _sourcePluginUpdateDialogSupport;
   Future<void>? _pluginUpdateDialog;
   final WindowsAdaptationNoticeDialogSupport
@@ -48,9 +43,7 @@ class HazukiAppStartupCoordinator extends ChangeNotifier {
   bool _allowDiscoverInitialLoad = false;
   SourceBootstrapState _bootstrapState = const SourceBootstrapState.idle();
   bool _autoSourceUpdateCheckEnabled = true;
-  bool _autoSoftwareUpdateCheckEnabled = true;
   bool _didAttemptAutoSourceUpdateCheck = false;
-  bool _didAttemptAutoSoftwareUpdateCheck = false;
 
   int get homeRefreshTick => _homeRefreshTick;
   bool get allowDiscoverInitialLoad => _allowDiscoverInitialLoad;
@@ -107,11 +100,7 @@ class HazukiAppStartupCoordinator extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     final sourceEnabled =
         prefs.getBool(hazukiAutoSourceUpdateCheckEnabledPreferenceKey) ?? true;
-    final softwareEnabled =
-        prefs.getBool(hazukiAutoSoftwareUpdateCheckEnabledPreferenceKey) ??
-        true;
     _autoSourceUpdateCheckEnabled = sourceEnabled;
-    _autoSoftwareUpdateCheckEnabled = softwareEnabled;
     if (_isMounted()) {
       notifyListeners();
     }
@@ -123,40 +112,6 @@ class HazukiAppStartupCoordinator extends ChangeNotifier {
     }
     _didAttemptAutoSourceUpdateCheck = true;
     _scheduleSourceUpdateDialogCheck();
-  }
-
-  void _scheduleAutomaticSoftwareUpdateCheck() {
-    if (_didAttemptAutoSoftwareUpdateCheck ||
-        !_autoSoftwareUpdateCheckEnabled) {
-      return;
-    }
-    _didAttemptAutoSoftwareUpdateCheck = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(_runSoftwareUpdateDialogCheckWhenIdle());
-    });
-  }
-
-  Future<void> _runSoftwareUpdateDialogCheckWhenIdle() async {
-    for (var attempt = 0; attempt < 10; attempt++) {
-      if (!_isMounted()) {
-        return;
-      }
-      final navigator = _navigatorKey.currentState;
-      if (!(navigator?.canPop() ?? false)) {
-        break;
-      }
-      await Future<void>.delayed(const Duration(milliseconds: 800));
-    }
-
-    if (!_isMounted()) {
-      return;
-    }
-
-    await _softwareUpdateDialogSupport.showIfNeeded(
-      navigatorKey: _navigatorKey,
-      isMounted: _isMounted,
-      skipPrefsKey: _softwareUpdateSkipDateKey,
-    );
   }
 
   void _scheduleSourceUpdateDialogCheck() {
@@ -182,20 +137,16 @@ class HazukiAppStartupCoordinator extends ChangeNotifier {
     _allowDiscoverInitialLoad = true;
     _homeRefreshTick++;
     notifyListeners();
-    unawaited(_showWindowsAdaptationNoticeThenCheckSoftwareUpdate());
+    unawaited(_showWindowsAdaptationNoticeAfterPluginUpdate());
   }
 
-  Future<void> _showWindowsAdaptationNoticeThenCheckSoftwareUpdate() async {
+  Future<void> _showWindowsAdaptationNoticeAfterPluginUpdate() async {
     await _pluginUpdateDialog;
     if (!_isMounted()) return;
     await _windowsAdaptationNoticeDialogSupport.showIfNeeded(
       navigatorKey: _navigatorKey,
       isMounted: _isMounted,
     );
-    if (!_isMounted()) {
-      return;
-    }
-    _scheduleAutomaticSoftwareUpdateCheck();
   }
 
   void _handleSourceUpdateDownloaded() {

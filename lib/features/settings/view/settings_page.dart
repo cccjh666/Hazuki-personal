@@ -239,14 +239,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 subtitle: const Text('Hazuki'),
                 onTap: () {
                   Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => AboutPage(
-                        softwareUpdateDialog:
-                            widget.coreDependencies.softwareUpdateDialog,
-                        softwareUpdateService:
-                            widget.coreDependencies.softwareUpdate,
-                      ),
-                    ),
+                    MaterialPageRoute<void>(builder: (_) => const AboutPage()),
                   );
                 },
               ),

@@ -628,6 +628,10 @@ void main() {
           location != SourcePluginActionLocation.lines) {
         expect(plugins.metadataLoads, isEmpty);
       }
+      // 进阶页少了一行（本 fork 移除了「自动检查软件更新」），列表最大滚动量
+      // 变小，scrollUntilVisible 之后条目可能仍停在折叠线下方，先确保完全可见。
+      await tester.ensureVisible(find.text('Action ${location.name}'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Action ${location.name}'));
       await tester.pumpAndSettle();
       expect(plugins.calls, [('fixture', location.name)]);

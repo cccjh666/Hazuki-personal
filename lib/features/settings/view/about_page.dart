@@ -4,30 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import 'package:hazuki/shared/software_update/software_update_dialog_presenter.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../../services/software_update/software_update_service.dart';
 import 'about_page_content.dart';
 import '../../../widgets/widgets.dart';
 
 class AboutPage extends StatefulWidget {
-  const AboutPage({
-    super.key,
-    required this.softwareUpdateService,
-    required this.softwareUpdateDialog,
-  });
-
-  final SoftwareUpdateService softwareUpdateService;
-  final SoftwareUpdateDialogPresenter softwareUpdateDialog;
+  const AboutPage({super.key});
 
   @override
   State<AboutPage> createState() => _AboutPageState();
 }
 
 class _AboutPageState extends State<AboutPage> {
-  static const _softwareUpdateSkipDateKey = 'software_update_skip_date';
-
-  bool _checkingUpdate = false;
   String? _currentVersion;
 
   @override
@@ -93,56 +81,6 @@ class _AboutPageState extends State<AboutPage> {
     );
   }
 
-  Future<void> _checkForSoftwareUpdates() async {
-    if (_checkingUpdate) {
-      return;
-    }
-
-    setState(() => _checkingUpdate = true);
-    try {
-      final check = await widget.softwareUpdateService.checkForUpdates();
-      if (!mounted) {
-        return;
-      }
-      if (check == null) {
-        await showHazukiPrompt(
-          context,
-          AppLocalizations.of(context)!.softwareUpdateCheckFailed,
-          isError: true,
-        );
-        return;
-      }
-      if (!check.hasUpdate) {
-        await showHazukiPrompt(
-          context,
-          AppLocalizations.of(context)!.softwareUpdateAlreadyLatest,
-        );
-        return;
-      }
-
-      await widget.softwareUpdateDialog.showForCheck(
-        dialogContext: context,
-        isMounted: () => mounted,
-        skipPrefsKey: _softwareUpdateSkipDateKey,
-        check: check,
-        respectSkipPreference: false,
-      );
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-      await showHazukiPrompt(
-        context,
-        AppLocalizations.of(context)!.softwareUpdateCheckFailed,
-        isError: true,
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _checkingUpdate = false);
-      }
-    }
-  }
-
   void _showLicenses() {
     final theme = Theme.of(context);
     unawaited(
@@ -197,8 +135,6 @@ class _AboutPageState extends State<AboutPage> {
       ),
       body: AboutPageContent(
         currentVersion: _currentVersion,
-        checkingUpdate: _checkingUpdate,
-        onCheckUpdate: () => unawaited(_checkForSoftwareUpdates()),
         onOpenProject: () =>
             unawaited(_openLink('', strings.aboutOpenLinkFailed)),
         onOpenFeedback: () =>

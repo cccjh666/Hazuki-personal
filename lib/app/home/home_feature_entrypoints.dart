@@ -1,6 +1,4 @@
 import 'package:hazuki/features/settings/view/plugins/source_plugins_page.dart';
-import 'package:hazuki/shared/software_update/software_update_dialog_presenter.dart';
-import 'package:hazuki/services/software_update/software_update_download_service.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -120,9 +118,6 @@ HomeFeatureEntrypoints buildHazukiHomeFeatureEntrypoints() {
     sourceDebug: sl<SourceDebugGateway>(),
     passwordLock: sl<PasswordLockService>(),
     softwareUpdate: sl<SoftwareUpdateService>(),
-    softwareUpdateDialog: SoftwareUpdateDialogPresenter(
-      downloadService: sl<SoftwareUpdateDownloadService>(),
-    ),
     cloudSync: sl<CloudSyncService>(),
     commentFilter: sl<CommentFilterService>(),
     dailyRecommendation: sl<DiscoverDailyRecommendationService>(),
