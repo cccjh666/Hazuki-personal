@@ -417,6 +417,7 @@
   "comicDetailUploader": "Uploader",
   "comicDetailChineseTeam": "Chinese team",
   "comicDetailCopiedId": "Copied ID",
+  "downloadsAuthorCopied": "Uploader copied",
   "comicDetailCopiedPrefix": "Copied: {value}",
   "@comicDetailCopiedPrefix": {
     "placeholders": {
@@ -1202,7 +1203,7 @@
   "advancedSoftwareLogCaptureTitle": "Record software logs",
   "advancedSoftwareLogCaptureSubtitle": "No logs are recorded while disabled",
   "advancedSoftwareUpdateSourceTitle": "Update link source",
-  "advancedSoftwareUpdateSourceSubtitle": "Select the link used for software, package, and comic source updates",
+  "advancedSoftwareUpdateSourceSubtitle": "Select the link used for comic source updates, the plugin marketplace and announcements",
   "advancedComicIdSearchTitle": "Comic ID detection",
   "advancedComicIdSearchSubtitle": "Show a tappable hint when a comic ID is detected",
   "labSourceAccountTitle": "Switch Source",
@@ -1336,6 +1337,8 @@
     }
   },
   "downloadsScanTooltip": "Scan local comics",
+  "downloadsSearchHint": "Search downloaded comics",
+  "downloadsSearchEmpty": "No downloaded comics match this keyword",
   "downloadsIntegrityWarning": "Some files may have been moved or deleted",
   "downloadsDefaultGroup": "Default group",
   "downloadsGroupsTitle": "Download groups",
@@ -1388,6 +1391,21 @@
   },
   "downloadsGroupAlreadyContainsComic": "This comic is already in that group",
   "downloadsSelectAtLeastOneGroup": "Select at least one group",
+  "downloadsSelectOneGroup": "Select one group",
+  "downloadsComicMovedToGroup": "Moved this comic to {group}",
+  "@downloadsComicMovedToGroup": {
+    "placeholders": {
+      "group": {}
+    }
+  },
+  "downloadsSelectedComicCount": "{count} comics selected",
+  "@downloadsSelectedComicCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "downloadsGroupNameRequired": "Enter a group name",
   "downloadsBatchGroupAction": "Group selected comics",
   "downloadsBack": "Back",
@@ -1468,6 +1486,22 @@
         "type": "int"
       },
       "groupCount": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadsBatchDeleted": "Deleted {comicCount} comics",
+  "@downloadsBatchDeleted": {
+    "placeholders": {
+      "comicCount": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadsBatchDeleteFailed": "Failed to delete {failedCount} comics. Please retry later.",
+  "@downloadsBatchDeleteFailed": {
+    "placeholders": {
+      "failedCount": {
         "type": "int"
       }
     }

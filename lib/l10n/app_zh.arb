@@ -417,6 +417,7 @@
   "comicDetailUploader": "上传者",
   "comicDetailChineseTeam": "汉化组",
   "comicDetailCopiedId": "已复制 ID",
+  "downloadsAuthorCopied": "已复制上传者",
   "comicDetailCopiedPrefix": "已复制：{value}",
   "@comicDetailCopiedPrefix": {
     "placeholders": {
@@ -1202,7 +1203,7 @@
   "advancedSoftwareLogCaptureTitle": "记录软件日志",
   "advancedSoftwareLogCaptureSubtitle": "关闭后不记录日志",
   "advancedSoftwareUpdateSourceTitle": "更新链接线路",
-  "advancedSoftwareUpdateSourceSubtitle": "选择软件更新、安装包与漫画源更新使用的链接",
+  "advancedSoftwareUpdateSourceSubtitle": "选择漫画源更新、插件市场与公告使用的链接",
   "advancedComicIdSearchTitle": "漫画 ID 识别",
   "advancedComicIdSearchSubtitle": "搜索文本可提取漫画 ID 时，在输入法上方显示可点击的提示",
   "labSourceAccountTitle": "切换漫画源",
@@ -1336,6 +1337,8 @@
     }
   },
   "downloadsScanTooltip": "扫描本地漫画",
+  "downloadsSearchHint": "搜索已下载漫画",
+  "downloadsSearchEmpty": "没有匹配的已下载漫画",
   "downloadsIntegrityWarning": "检测到有文件可能被移动或删除",
   "downloadsDefaultGroup": "默认组",
   "downloadsGroupsTitle": "下载分组",
@@ -1388,6 +1391,9 @@
   },
   "downloadsGroupAlreadyContainsComic": "该组已经有这部漫画",
   "downloadsSelectAtLeastOneGroup": "请至少勾选一个组",
+  "downloadsSelectOneGroup": "请选择一个分组",
+  "downloadsComicMovedToGroup": "已将该漫画移动到{group}",
+  "downloadsSelectedComicCount": "已选择{count}部漫画",
   "downloadsGroupNameRequired": "请输入分组名称",
   "downloadsBatchGroupAction": "分组选中漫画",
   "downloadsBack": "返回",
@@ -1468,6 +1474,22 @@
         "type": "int"
       },
       "groupCount": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadsBatchDeleted": "已删除{comicCount}部漫画",
+  "@downloadsBatchDeleted": {
+    "placeholders": {
+      "comicCount": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadsBatchDeleteFailed": "{failedCount}部漫画删除失败，请稍后重试",
+  "@downloadsBatchDeleteFailed": {
+    "placeholders": {
+      "failedCount": {
         "type": "int"
       }
     }
