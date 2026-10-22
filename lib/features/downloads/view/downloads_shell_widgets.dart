@@ -221,6 +221,7 @@ class DownloadsScanButton extends StatelessWidget {
     super.key,
     required this.selectionMode,
     required this.scanning,
+    this.deleting = false,
     required this.selectedCount,
     required this.onDeleteSelected,
     required this.onScanDownloaded,
@@ -228,6 +229,9 @@ class DownloadsScanButton extends StatelessWidget {
 
   final bool selectionMode;
   final bool scanning;
+
+  /// 批量删除进行中：按钮显示进度且不可再次点击（防重复提交）。
+  final bool deleting;
   final int selectedCount;
   final VoidCallback onDeleteSelected;
   final VoidCallback onScanDownloaded;
@@ -257,7 +261,7 @@ class DownloadsScanButton extends StatelessWidget {
             value,
           ),
           onPressed: selectionMode
-              ? (selectedCount > 0 ? onDeleteSelected : null)
+              ? (selectedCount > 0 && !deleting ? onDeleteSelected : null)
               : (scanning ? null : onScanDownloaded),
           child: AnimatedSwitcher(
             key: const ValueKey<String>('downloads_action_icon_switcher'),
@@ -279,7 +283,19 @@ class DownloadsScanButton extends StatelessWidget {
                 ),
               );
             },
-            child: selectionMode
+            child: selectionMode && deleting
+                ? SizedBox(
+                    key: const ValueKey<String>('delete_loading'),
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.4,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        colorScheme.onErrorContainer,
+                      ),
+                    ),
+                  )
+                : selectionMode
                 ? const Icon(
                     Icons.delete_outline_rounded,
                     key: ValueKey<String>('delete_icon'),

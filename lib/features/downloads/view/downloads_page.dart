@@ -38,9 +38,9 @@ class _DownloadsPageState extends State<DownloadsPage>
   late final TabController _tabController;
   late final DownloadsPageController _controller;
   late final Listenable _pageListenable;
+  int _tabIndex = 0;
 
-  bool get _selectionMode =>
-      _controller.selectionModeForTab(_tabController.index);
+  bool get _selectionMode => _controller.selectionModeForTab(_tabIndex);
 
   WindowsComicDetailController get _windowsController =>
       widget.windowsComicDetailController ??
@@ -58,7 +58,10 @@ class _DownloadsPageState extends State<DownloadsPage>
       if (mounted) unawaited(_controller.runIntegrityCheck());
     });
     _tabController = TabController(length: 2, vsync: this);
-    _pageListenable = Listenable.merge([_tabController, _controller]);
+    // 页面内容只跟随 controller 重建。之前把 _tabController 也合并进来，
+    // 导致 TabBar 动画的每一帧都重建整页并重算过滤列表；AppBar 自己的
+    // 动画已经由 _DownloadsAnimatedAppBarActions 内部处理。
+    _pageListenable = _controller;
     _tabController.addListener(_handleTabChanged);
   }
 
@@ -71,10 +74,14 @@ class _DownloadsPageState extends State<DownloadsPage>
   }
 
   void _handleTabChanged() {
+    final index = _tabController.index;
     _controller.handleTabChanged(
-      tabIndex: _tabController.index,
+      tabIndex: index,
       indexIsChanging: _tabController.indexIsChanging,
     );
+    if (index != _tabIndex) {
+      setState(() => _tabIndex = index);
+    }
   }
 
   String _groupNames(BuildContext context, Iterable<String> groupIds) {
@@ -110,7 +117,7 @@ class _DownloadsPageState extends State<DownloadsPage>
               canPop: !_selectionMode,
               onPopInvokedWithResult: (didPop, result) {
                 if (!didPop) {
-                  _controller.exitSelectionMode(_tabController.index);
+                  _controller.exitSelectionMode(_tabIndex);
                 }
               },
               child: WindowsComicDetailHost(
@@ -124,7 +131,7 @@ class _DownloadsPageState extends State<DownloadsPage>
                         comics.isNotEmpty &&
                         _controller.selectedCount == comics.length,
                     onToggleSelectionMode: () {
-                      _controller.toggleSelectionMode(_tabController.index);
+                      _controller.toggleSelectionMode(_tabIndex);
                     },
                     onSelectAll: () {
                       // 切换全选：已全选则取消全选，否则全选当前组内所有漫画
@@ -171,7 +178,7 @@ class _DownloadsPageState extends State<DownloadsPage>
                               DownloadsCompletedTab(
                                 model: DownloadsCompletedTabModel(
                                   comics: comics,
-                                  active: _tabController.index == 1,
+                                  active: _tabIndex == 1,
                                   selectionMode: _selectionMode,
                                   scanning: _controller.scanningDownloaded,
                                   selectedCount: _controller.selectedCount,
@@ -189,84 +196,73 @@ class _DownloadsPageState extends State<DownloadsPage>
                                       .comicCountForGroup(
                                         _controller.selectedGroupId,
                                       ),
-                                  groupComicCounts: {
-                                    for (final group in _controller.groups)
-                                      group.id: _controller.comicCountForGroup(
-                                        group.id,
-                                      ),
-                                  },
+                                  groupComicCounts:
+                                      _controller.groupComicCounts,
+                                  searchQuery: _controller.searchQuery,
+                                  deleting: _controller.deletingSelection,
+                                  batchBusy: _controller.batchBusy,
                                 ),
                                 actions: DownloadsCompletedTabActions(
                                   onToggleSelection:
                                       _controller.toggleSelection,
+                                  onEnterSelection:
+                                      _controller.enterSelectionModeWith,
                                   onDeleteSelected: () {
-                                    unawaited(
-                                      _controller.deleteSelected(context),
-                                    );
+                                    unawaited(() async {
+                                      final result = await _controller
+                                          .deleteSelected(context);
+                                      if (result == null || !context.mounted) {
+                                        return;
+                                      }
+                                      final strings = l10n(context);
+                                      unawaited(
+                                        showHazukiPrompt(
+                                          context,
+                                          result.hasFailure
+                                              ? strings
+                                                    .downloadsBatchDeleteFailed(
+                                                      result.failed,
+                                                    )
+                                              : strings.downloadsBatchDeleted(
+                                                  result.deleted,
+                                                ),
+                                        ),
+                                      );
+                                    }());
                                   },
                                   onBatchGroup: () {
                                     unawaited(() async {
-                                      final selection =
+                                      final groupId =
                                           await showDownloadsBulkGroupDialog(
                                             context: context,
                                             groups: _controller.groups,
-                                            selectedComics: _controller
-                                                .selectedDownloadedComics,
-                                            initialComicKeysByGroup: _controller
-                                                .selectedComicKeysByGroup,
-                                            currentGroupName:
-                                                _controller
-                                                    .selectedGroup
-                                                    .isDefault
-                                                ? l10n(
-                                                    context,
-                                                  ).downloadsDefaultGroup
-                                                : _controller
-                                                      .selectedGroup
-                                                      .name,
+                                            selectedComicCount:
+                                                _controller.selectedCount,
+                                            initialGroupId: _controller
+                                                .commonSelectedGroupId,
                                           );
-                                      if (selection == null ||
+                                      if (groupId == null ||
                                           !context.mounted) {
                                         return;
                                       }
-                                      final comicCount =
-                                          selection.action ==
-                                              DownloadsBulkGroupAction
-                                                  .removeFromCurrentGroup
-                                          ? await _controller
-                                                .removeSelectedComicsFromCurrentGroup()
-                                          : (await _controller
-                                                    .updateSelectedComicsGroups(
-                                                      selection
-                                                          .comicKeysByGroup,
-                                                    ))
-                                                .comicCount;
+                                      final targetName = _groupNames(context, [
+                                        groupId,
+                                      ]);
+                                      final result = await _controller
+                                          .updateSelectedComicsGroups(groupId);
                                       if (!context.mounted) return;
                                       unawaited(
                                         showHazukiPrompt(
                                           context,
-                                          selection.action ==
-                                                  DownloadsBulkGroupAction
-                                                      .removeFromCurrentGroup
-                                              ? l10n(
-                                                  context,
-                                                ).downloadsBatchRemovedFromGroup(
-                                                  comicCount,
-                                                  _controller
-                                                          .selectedGroup
-                                                          .isDefault
-                                                      ? l10n(
-                                                          context,
-                                                        ).downloadsDefaultGroup
-                                                      : _controller
-                                                            .selectedGroup
-                                                            .name,
-                                                )
-                                              : l10n(
-                                                  context,
-                                                ).downloadsBatchGroupsUpdated(
-                                                  comicCount,
-                                                ),
+                                          result.changedGroupCount == 0
+                                              ? l10n(context)
+                                                    .downloadsGroupAlreadyContainsComic
+                                              : l10n(context)
+                                                    .downloadsBatchMovedToGroup(
+                                                      result
+                                                          .changedGroupCount,
+                                                      targetName,
+                                                    ),
                                         ),
                                       );
                                     }());
@@ -309,6 +305,8 @@ class _DownloadsPageState extends State<DownloadsPage>
                                   onRenameGroup: _controller.renameGroup,
                                   onReorderGroups: _controller.reorderGroups,
                                   onDeleteGroup: _controller.deleteGroup,
+                                  onSearchQueryChanged:
+                                      _controller.setSearchQuery,
                                   onShowComicMenu:
                                       (
                                         comic,
@@ -333,88 +331,32 @@ class _DownloadsPageState extends State<DownloadsPage>
                                           );
                                           return;
                                         }
-                                        if (action ==
-                                            DownloadsComicMenuAction
-                                                .removeFromCurrentGroup) {
-                                          final selectedGroup =
-                                              _controller.selectedGroup;
-                                          final removed = await _controller
-                                              .removeComicFromCurrentGroup(
-                                                comic,
-                                              );
-                                          if (!context.mounted) {
-                                            return;
-                                          }
-                                          if (!removed) {
-                                            unawaited(
-                                              showHazukiPrompt(
-                                                context,
-                                                l10n(
-                                                  context,
-                                                ).downloadsCannotRemoveOnlyDefaultGroup,
-                                              ),
-                                            );
-                                            return;
-                                          }
-                                          unawaited(
-                                            showHazukiPrompt(
-                                              context,
-                                              l10n(
-                                                context,
-                                              ).downloadsComicRemovedFromGroup(
-                                                selectedGroup.isDefault
-                                                    ? l10n(
-                                                        context,
-                                                      ).downloadsDefaultGroup
-                                                    : selectedGroup.name,
-                                              ),
-                                            ),
-                                          );
-                                          return;
-                                        }
-                                        final selectedGroupIds =
+                                        final selectedGroupId =
                                             await showDownloadGroupPicker(
                                               context: context,
                                               groups: _controller.groups,
-                                              initiallySelectedGroupIds:
-                                                  _controller.groupIdsForComic(
+                                              initiallySelectedGroupId:
+                                                  _controller.groupIdForComic(
                                                     comic,
                                                   ),
                                             );
-                                        if (selectedGroupIds == null) return;
+                                        if (selectedGroupId == null) return;
                                         final updated = await _controller
                                             .updateComicGroups(
                                               comic,
-                                              selectedGroupIds,
+                                              selectedGroupId,
                                             );
                                         if (!context.mounted) return;
                                         final message = !updated.changed
                                             ? l10n(
                                                 context,
                                               ).downloadsGroupAlreadyContainsComic
-                                            : updated.removedGroupIds.length ==
-                                                  1
-                                            ? l10n(
-                                                context,
-                                              ).downloadsComicRemovedFromGroup(
-                                                _groupNames(
-                                                  context,
-                                                  updated.removedGroupIds,
-                                                ),
-                                              )
-                                            : updated.removedGroupIds.isNotEmpty
-                                            ? l10n(
-                                                context,
-                                              ).downloadsComicRemovedFromGroups(
-                                                updated.removedGroupIds.length,
-                                              )
                                             : l10n(
                                                 context,
-                                              ).downloadsAddedToGroups(
-                                                _groupNames(
-                                                  context,
-                                                  updated.addedGroupIds,
-                                                ),
+                                              ).downloadsComicMovedToGroup(
+                                                _groupNames(context, [
+                                                  selectedGroupId,
+                                                ]),
                                               );
                                         unawaited(
                                           showHazukiPrompt(context, message),

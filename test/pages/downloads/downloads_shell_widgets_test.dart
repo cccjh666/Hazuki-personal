@@ -304,6 +304,42 @@ void main() {
     expect(deleteCount, 0);
   });
 
+  testWidgets('delete action shows progress and ignores taps while deleting', (
+    tester,
+  ) async {
+    var deleteCount = 0;
+
+    await tester.pumpWidget(
+      _wrapWithMaterial(
+        DownloadsScanButton(
+          selectionMode: true,
+          scanning: false,
+          deleting: true,
+          selectedCount: 2,
+          onDeleteSelected: () => deleteCount++,
+          onScanDownloaded: () {},
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(
+      find.byKey(const ValueKey<String>('delete_loading')),
+      findsOneWidget,
+    );
+    expect(find.byIcon(Icons.delete_outline_rounded), findsNothing);
+    expect(
+      tester
+          .widget<FloatingActionButton>(find.byType(FloatingActionButton))
+          .onPressed,
+      isNull,
+    );
+
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pump();
+    expect(deleteCount, 0);
+  });
+
   testWidgets(
     'select-all button is hidden when not in selection mode on downloaded tab',
     (tester) async {

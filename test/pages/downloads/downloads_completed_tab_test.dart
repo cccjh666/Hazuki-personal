@@ -164,6 +164,79 @@ void main() {
     expect(visibleIndicator, findsNothing);
   });
 
+  testWidgets('long pressing a card requests selection mode for that comic', (
+    tester,
+  ) async {
+    final entered = <String>[];
+    await tester.pumpWidget(_wrapTab(onEnterSelection: entered.add));
+
+    await tester.longPress(find.text('Test Comic'));
+    await tester.pumpAndSettle();
+
+    expect(entered, ['comic-1']);
+  });
+
+  testWidgets('card menu button opens the menu outside selection mode', (
+    tester,
+  ) async {
+    final menuRequests = <String>[];
+    await tester.pumpWidget(
+      _wrapTab(
+        onShowComicMenu: (comic, _, _) async =>
+            menuRequests.add(comic.storageKey),
+      ),
+    );
+
+    final menuButton = find.byKey(
+      const ValueKey<String>('downloaded_card_menu_button'),
+    );
+    expect(menuButton, findsOneWidget);
+
+    await tester.tap(menuButton);
+    await tester.pumpAndSettle();
+
+    expect(menuRequests, ['comic-1']);
+  });
+
+  testWidgets('search input is debounced into a single query update', (
+    tester,
+  ) async {
+    final queries = <String>[];
+    await tester.pumpWidget(_wrapTab(onSearchQueryChanged: queries.add));
+
+    final field = find.byType(TextField);
+    await tester.enterText(field, 'a');
+    await tester.pump(const Duration(milliseconds: 80));
+    await tester.enterText(field, 'ab');
+    await tester.pump(const Duration(milliseconds: 80));
+    await tester.enterText(field, 'abc');
+    await tester.pump(const Duration(milliseconds: 80));
+
+    // 防抖窗口内不触发过滤（否则每个按键都要过滤一遍整库）。
+    expect(queries, isEmpty);
+
+    await tester.pump(const Duration(milliseconds: 240));
+    expect(queries, ['abc']);
+  });
+
+  testWidgets('clearing the search box filters immediately', (tester) async {
+    final queries = <String>[];
+    await tester.pumpWidget(_wrapTab(onSearchQueryChanged: queries.add));
+
+    await tester.enterText(find.byType(TextField), 'abc');
+    await tester.pump(const Duration(milliseconds: 240));
+    expect(queries, ['abc']);
+
+    queries.clear();
+    await tester.tap(
+      find.byKey(const ValueKey<String>('downloads_search_clear')),
+    );
+    await tester.pump();
+
+    // 清空必须立即生效，不能等防抖。
+    expect(queries, ['']);
+  });
+
   testWidgets('swiping another comic closes the previously revealed comic', (
     tester,
   ) async {
@@ -1076,7 +1149,8 @@ void main() {
       final firstComic = find.text('Comic 0');
       final launcherRect = tester.getRect(launcher);
 
-      await tester.drag(firstComic, const Offset(0, -100));
+      // 列表顶部留白包含分组启动器与检索框，滚动距离需覆盖这部分高度。
+      await tester.drag(firstComic, const Offset(0, -160));
       await tester.pumpAndSettle();
 
       final comicRect = tester.getRect(firstComic);
@@ -1142,6 +1216,10 @@ Widget _wrapTab({
   List<DownloadedMangaComic> comics = const [_comic],
   ValueChanged<DownloadedMangaComic>? onOpenComic,
   ValueChanged<DownloadedMangaComic>? onDeleteComic,
+  ValueChanged<String>? onEnterSelection,
+  ValueChanged<String>? onSearchQueryChanged,
+  Future<void> Function(DownloadedMangaComic, Offset, BuildContext)?
+  onShowComicMenu,
   Future<void> Function(String groupId)? onDeleteGroup,
   Future<DownloadGroup> Function(String groupId, String name)? onRenameGroup,
   Future<void> Function(List<String> orderedGroupIds)? onReorderGroups,
@@ -1159,6 +1237,9 @@ Widget _wrapTab({
         comics: comics,
         onOpenComic: onOpenComic,
         onDeleteComic: onDeleteComic,
+        onEnterSelection: onEnterSelection,
+        onSearchQueryChanged: onSearchQueryChanged,
+        onShowComicMenu: onShowComicMenu,
         onDeleteGroup: onDeleteGroup,
         onRenameGroup: onRenameGroup,
         onReorderGroups: onReorderGroups,
@@ -1192,6 +1273,10 @@ Widget _buildTab({
   List<DownloadedMangaComic> comics = const [_comic],
   ValueChanged<DownloadedMangaComic>? onOpenComic,
   ValueChanged<DownloadedMangaComic>? onDeleteComic,
+  ValueChanged<String>? onEnterSelection,
+  ValueChanged<String>? onSearchQueryChanged,
+  Future<void> Function(DownloadedMangaComic, Offset, BuildContext)?
+  onShowComicMenu,
   Future<void> Function(String groupId)? onDeleteGroup,
   Future<DownloadGroup> Function(String groupId, String name)? onRenameGroup,
   Future<void> Function(List<String> orderedGroupIds)? onReorderGroups,
@@ -1226,6 +1311,7 @@ Widget _buildTab({
     ),
     actions: DownloadsCompletedTabActions(
       onToggleSelection: (_) {},
+      onEnterSelection: onEnterSelection ?? (_) {},
       onDeleteSelected: () {},
       onBatchGroup: () {},
       onScanDownloaded: () {},
@@ -1240,7 +1326,8 @@ Widget _buildTab({
               DownloadGroup(id: groupId, name: name, createdAtMs: 1),
       onReorderGroups: onReorderGroups ?? (_) async {},
       onDeleteGroup: onDeleteGroup ?? (_) async {},
-      onShowComicMenu: (_, _, _) async {},
+      onShowComicMenu: onShowComicMenu ?? (_, _, _) async {},
+      onSearchQueryChanged: onSearchQueryChanged ?? (_) {},
     ),
   );
 }

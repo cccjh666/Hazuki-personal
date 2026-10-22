@@ -12,6 +12,7 @@ class _AnimatedDownloadedComicCard extends StatelessWidget {
     required this.swipeRevealStackKey,
     required this.onSwipeRevealChanged,
     required this.onToggleSelection,
+    required this.onEnterSelection,
     required this.onOpenComic,
     required this.onShowComicMenu,
   });
@@ -25,6 +26,9 @@ class _AnimatedDownloadedComicCard extends StatelessWidget {
   final GlobalKey swipeRevealStackKey;
   final ValueChanged<_DownloadedComicSwipeReveal> onSwipeRevealChanged;
   final ValueChanged<String> onToggleSelection;
+
+  /// 长按卡片：进入多选并选中该卡片。
+  final ValueChanged<String> onEnterSelection;
   final ValueChanged<DownloadedMangaComic> onOpenComic;
   final Future<void> Function(
     DownloadedMangaComic comic,
@@ -78,6 +82,7 @@ class _AnimatedDownloadedComicCard extends StatelessWidget {
           selected: selected,
           hasIntegrityIssue: hasIntegrityIssue,
           onToggleSelection: onToggleSelection,
+          onEnterSelection: onEnterSelection,
           onOpenComic: onOpenComic,
           onShowComicMenu: onShowComicMenu,
         ),
@@ -423,6 +428,7 @@ class _DownloadedComicCardContent extends StatelessWidget {
     required this.selected,
     required this.hasIntegrityIssue,
     required this.onToggleSelection,
+    required this.onEnterSelection,
     required this.onOpenComic,
     required this.onShowComicMenu,
   });
@@ -432,6 +438,7 @@ class _DownloadedComicCardContent extends StatelessWidget {
   final bool selected;
   final bool hasIntegrityIssue;
   final ValueChanged<String> onToggleSelection;
+  final ValueChanged<String> onEnterSelection;
   final ValueChanged<DownloadedMangaComic> onOpenComic;
   final Future<void> Function(
     DownloadedMangaComic comic,
@@ -473,15 +480,9 @@ class _DownloadedComicCardContent extends StatelessWidget {
           builder: (itemContext) => GestureDetector(
             onLongPressStart: selectionMode
                 ? null
-                : (details) {
+                : (_) {
                     unawaited(HapticFeedback.mediumImpact());
-                    unawaited(
-                      onShowComicMenu(
-                        comic,
-                        details.globalPosition,
-                        itemContext,
-                      ),
-                    );
+                    onEnterSelection(comic.storageKey);
                   },
             child: InkWell(
               borderRadius: BorderRadius.circular(18),
@@ -535,9 +536,12 @@ class _DownloadedComicCardContent extends StatelessWidget {
                             ],
                           ),
                         ),
-                        DownloadedComicSelectionSlot(
-                          visible: selectionMode,
+                        _DownloadedComicTrailingSlot(
+                          selectionMode: selectionMode,
                           selected: selected,
+                          onShowMenu: (globalPosition) => unawaited(
+                            onShowComicMenu(comic, globalPosition, itemContext),
+                          ),
                         ),
                       ],
                     ),
@@ -552,6 +556,80 @@ class _DownloadedComicCardContent extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// 卡片右侧固定 42x42 的槽位：平时显示「⋮」菜单入口，多选时换成勾选指示。
+///
+/// 两个子组件都放在固定尺寸的 Stack 里做交叉淡入淡出，切换多选时标题区
+/// 不会因为宽度变化而重排。
+class _DownloadedComicTrailingSlot extends StatelessWidget {
+  const _DownloadedComicTrailingSlot({
+    required this.selectionMode,
+    required this.selected,
+    required this.onShowMenu,
+  });
+
+  static const double _size = 42;
+
+  final bool selectionMode;
+  final bool selected;
+  final ValueChanged<Offset> onShowMenu;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: _size,
+      height: _size,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          AnimatedScale(
+            scale: selectionMode ? 0.7 : 1,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutCubic,
+            child: AnimatedOpacity(
+              opacity: selectionMode ? 0 : 1,
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              child: IgnorePointer(
+                ignoring: selectionMode,
+                child: _DownloadedComicMenuButton(onShowMenu: onShowMenu),
+              ),
+            ),
+          ),
+          DownloadedComicSelectionSlot(
+            visible: selectionMode,
+            selected: selected,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 「⋮」按钮：把长按菜单挪到显式入口上，避免长按与多选冲突。
+class _DownloadedComicMenuButton extends StatelessWidget {
+  const _DownloadedComicMenuButton({required this.onShowMenu});
+
+  final ValueChanged<Offset> onShowMenu;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      key: const ValueKey<String>('downloaded_card_menu_button'),
+      icon: const Icon(Icons.more_vert_rounded, size: 20),
+      tooltip: MaterialLocalizations.of(context).showMenuTooltip,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints.tightFor(width: 42, height: 42),
+      onPressed: () {
+        final box = context.findRenderObject() as RenderBox?;
+        final position = box == null || !box.hasSize
+            ? Offset.zero
+            : box.localToGlobal(box.size.center(Offset.zero));
+        onShowMenu(position);
+      },
     );
   }
 }

@@ -25,26 +25,50 @@ class DownloadedComicCover extends StatelessWidget {
   final double height;
   final double borderRadius;
 
+  /// 已下载封面写入后不再变化，缓存 `existsSync` 结果可以避免每次重建
+  /// （每个可见卡片都会重建）都做一次同步磁盘 stat，减少主线程阻塞。
+  static final Map<String, bool> _existingCoverPaths = <String, bool>{};
+  static const int _existingCoverPathLimit = 512;
+
+  static bool _coverFileExists(String path) {
+    final cached = _existingCoverPaths[path];
+    if (cached != null) return cached;
+    final exists = File(path).existsSync();
+    if (_existingCoverPaths.length >= _existingCoverPathLimit) {
+      _existingCoverPaths.remove(_existingCoverPaths.keys.first);
+    }
+    _existingCoverPaths[path] = exists;
+    return exists;
+  }
+
+  /// 仅供测试：清空文件存在性缓存。
+  @visibleForTesting
+  static void debugResetCoverFileCache() => _existingCoverPaths.clear();
+
   @override
   Widget build(BuildContext context) {
     final localPath = comic.localCoverPath?.trim();
     final radius = BorderRadius.circular(borderRadius);
     Widget child;
-    if (localPath != null && localPath.isNotEmpty) {
-      final file = File(localPath);
-      if (file.existsSync()) {
-        child = ClipRRect(
-          borderRadius: radius,
-          child: Image.file(
-            file,
-            width: width,
-            height: height,
-            fit: BoxFit.cover,
-          ),
-        );
-      } else {
-        child = _buildFallback(radius);
-      }
+    if (localPath != null &&
+        localPath.isNotEmpty &&
+        _coverFileExists(localPath)) {
+      // 按显示尺寸解码：800x1200 的封面按 84x118 槽位全尺寸解码会申请
+      // 数 MB 位图，滚动/切换分组时反复解码是掉帧的主要原因之一。
+      final cacheWidth = (width * MediaQuery.devicePixelRatioOf(context))
+          .round();
+      child = ClipRRect(
+        borderRadius: radius,
+        child: Image.file(
+          File(localPath),
+          width: width,
+          height: height,
+          cacheWidth: cacheWidth,
+          fit: BoxFit.cover,
+          gaplessPlayback: true,
+          errorBuilder: (context, error, stackTrace) => _buildFallback(radius),
+        ),
+      );
     } else {
       child = _buildFallback(radius);
     }

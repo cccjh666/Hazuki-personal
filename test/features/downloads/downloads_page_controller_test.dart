@@ -115,6 +115,47 @@ void main() {
     expect(controller.comicCountForGroup('custom'), 0);
   });
 
+  test('applies the search keyword on top of group filtering', () {
+    addTearDown(controller.dispose);
+    when(
+      () => groups.comicKeysForGroup('custom'),
+    ).thenReturn({_comic.storageKey});
+    controller.selectGroup('custom');
+
+    controller.setSearchQuery('com');
+    expect(controller.filteredDownloadedComics, [_comic]);
+
+    controller.setSearchQuery('zzz');
+    expect(controller.filteredDownloadedComics, isEmpty);
+
+    controller.setSearchQuery('   ');
+    expect(controller.searchQuery, isEmpty);
+    expect(controller.filteredDownloadedComics, [_comic]);
+  });
+
+  test('entering selection mode from a long press keeps earlier picks', () {
+    addTearDown(controller.dispose);
+
+    controller.enterSelectionModeWith(_comic.storageKey);
+    expect(controller.selectionModeForTab(1), isTrue);
+    expect(controller.selectedComicIds, {_comic.storageKey});
+
+    controller.enterSelectionModeWith(_comic.storageKey);
+    expect(controller.selectedComicIds, {_comic.storageKey});
+    expect(() => controller.selectedComicIds.add('other'), throwsUnsupportedError);
+  });
+
+  test('toggles the whole selection in one call', () {
+    addTearDown(controller.dispose);
+    const keys = ['a', 'b'];
+
+    controller.toggleSelectAll(keys);
+    expect(controller.selectedComicIds, {'a', 'b'});
+
+    controller.toggleSelectAll(keys);
+    expect(controller.selectedComicIds, isEmpty);
+  });
+
   test('manages tasks through the library contract', () async {
     addTearDown(controller.dispose);
     when(() => downloads.pauseTask(any())).thenAnswer((_) async {});
