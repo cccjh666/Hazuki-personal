@@ -356,4 +356,87 @@ void main() {
     expect(orderButton.tooltip, strings.searchOrderTotalRanking);
     expect(find.text(strings.searchEmpty), findsOneWidget);
   });
+
+  testWidgets('limits how many sources load at the same time', (tester) async {
+    late BuildContext testContext;
+    await tester.pumpWidget(
+      withTestSourcePresentation(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Builder(
+            builder: (context) {
+              testContext = context;
+              return const SizedBox();
+            },
+          ),
+        ),
+      ),
+    );
+
+    final assembly = SourceRuntimeAssembly(
+      initialCatalog: hazukiAllowedSourceCatalog,
+    );
+    final sourceService = HazukiSourceSearchAdapter(
+      runtime: assembly.testing.runtime,
+      content: assembly.testing.content,
+    );
+    final gates = <Completer<SearchComicsResult>>[];
+    var active = 0;
+    var maxActive = 0;
+    final controller = AggregateSearchResultsController.withLoader(
+      sourceService: sourceService,
+      maxConcurrentLoads: 2,
+      loader:
+          ({
+            required sourceKey,
+            required keyword,
+            required page,
+            required order,
+          }) async {
+            active++;
+            if (active > maxActive) maxActive = active;
+            final gate = Completer<SearchComicsResult>();
+            gates.add(gate);
+            try {
+              return await gate.future;
+            } finally {
+              active--;
+            }
+          },
+    );
+    addTearDown(controller.dispose);
+
+    final searchFuture = controller.search(
+      searchMessages(testContext),
+      'Hazuki',
+    );
+    await tester.pump();
+
+    // 只有两个源被放行，其余排队。
+    expect(controller.sections.length, greaterThan(2));
+    expect(gates, hasLength(2));
+    expect(maxActive, 2);
+
+    gates.first.complete(const SearchComicsResult(comics: [], maxPage: 0));
+    await tester.pump();
+    expect(gates, hasLength(3), reason: '空出一个并发位后应放行下一个源');
+
+    while (gates.length < controller.sections.length) {
+      gates.last.complete(
+        const SearchComicsResult(comics: [], maxPage: 0),
+      );
+      await tester.pump();
+    }
+    for (final gate in gates) {
+      if (!gate.isCompleted) {
+        gate.complete(const SearchComicsResult(comics: [], maxPage: 0));
+      }
+    }
+    await tester.pump();
+    await searchFuture;
+
+    expect(maxActive, lessThanOrEqualTo(2));
+    expect(controller.sections.every((section) => !section.loading), isTrue);
+  });
 }

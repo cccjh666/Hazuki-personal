@@ -199,16 +199,11 @@ class SourcePluginManager extends ChangeNotifier implements SourceScriptStore {
         .toList();
     records.sort((a, b) => b.path.compareTo(a.path));
     final hasVersionFile = await versionFile.exists();
-    if (hasVersionFile || records.isNotEmpty) {
-      final state =
-          jsonDecode(
-                await (hasVersionFile ? versionFile : records.first)
-                    .readAsString(),
-              )
-              as Map;
-      if (state['schemaVersion'] != 1) {
-        throw const SourcePluginException('plugin_invalid_store');
-      }
+    final state = await _readRegistryState([
+      if (hasVersionFile) versionFile,
+      ...records,
+    ]);
+    if (state != null) {
       if (state['historicalPresentations'] case final Map history) {
         for (final entry in history.entries) {
           if (entry.key is String && entry.value is Map) {
@@ -219,28 +214,18 @@ class SourcePluginManager extends ChangeNotifier implements SourceScriptStore {
           }
         }
       }
-      for (final raw in state['installed'] as List) {
-        final record = Map<String, dynamic>.from(raw as Map);
-        if (record['repository'] case final String repository) {
-          record['repository'] = canonicalSourcePluginUrl(repository);
-        }
-        final plugin = InstalledSourcePlugin.fromJson(record);
-        _installed[plugin.manifest.id] = plugin;
-        _installedVersions[plugin.manifest.id] = plugin.manifest.version;
-        _historicalPresentations[plugin.manifest.id] =
-            historicalSourcePresentation(plugin.manifest.presentation);
-        if (!await File(
-          p.join(_root!.path, plugin.directory, plugin.manifest.entry),
-        ).exists()) {
-          _fileErrors[plugin.manifest.id] = 'plugin_entry_missing';
+      final installedRecords = state['installed'];
+      if (installedRecords is List) {
+        for (final raw in installedRecords) {
+          await _restoreInstalledRecord(raw);
         }
       }
-      _repositories.addAll(
-        (state['repositories'] as List)
-            .cast<String>()
-            .map(canonicalSourcePluginUrl)
-            .toSet(),
-      );
+      final repositories = state['repositories'];
+      if (repositories is List) {
+        _repositories.addAll(
+          repositories.whereType<String>().map(canonicalSourcePluginUrl).toSet(),
+        );
+      }
       if (state['plugins'] case final List versions) {
         for (final record in versions.whereType<Map>()) {
           if (record['id'] case final String id) {
@@ -256,7 +241,9 @@ class SourcePluginManager extends ChangeNotifier implements SourceScriptStore {
     }
     await _backupLegacyScripts();
     await onCatalogChanged?.call(catalog);
-    if (!hasVersionFile && _installed.isNotEmpty) await _commit();
+    if ((!hasVersionFile || state == null) && _installed.isNotEmpty) {
+      await _commit();
+    }
     final cachedIndex = File(p.join(_root!.path, 'plugins.json'));
     if (await cachedIndex.exists()) {
       try {
@@ -268,6 +255,75 @@ class SourcePluginManager extends ChangeNotifier implements SourceScriptStore {
       }
     }
     _notify();
+  }
+
+  /// 依次尝试候选注册表文件，返回第一个能解析且 schema 匹配的状态。
+  ///
+  /// 注册表是单一 JSON，一旦写坏（断电、磁盘满、手动改坏）旧实现会直接抛
+  /// `plugin_invalid_store`，整个插件系统起不来、所有源消失。这里改成：
+  /// 坏文件改名留档（`*.corrupt-<时间戳>`），继续尝试备份文件，全都不行就
+  /// 当作「未安装任何插件」继续启动，UI 仍可正常进入并重新安装。
+  Future<Map?> _readRegistryState(List<File> candidates) async {
+    for (final file in candidates) {
+      try {
+        final decoded = jsonDecode(await file.readAsString());
+        if (decoded is! Map) {
+          await _quarantineRegistry(file);
+          continue;
+        }
+        final state = Map<String, dynamic>.from(decoded);
+        if (state['schemaVersion'] != 1) {
+          await _quarantineRegistry(file);
+          continue;
+        }
+        return state;
+      } catch (_) {
+        await _quarantineRegistry(file);
+      }
+    }
+    return null;
+  }
+
+  /// 把损坏的注册表改名留档，绝不删除用户数据。
+  Future<void> _quarantineRegistry(File file) async {
+    try {
+      final stamp = DateTime.now().millisecondsSinceEpoch;
+      await file.rename('${file.path}.corrupt-$stamp');
+    } catch (_) {
+      // 改名都失败（只读目录等）时保持原样，继续走空状态。
+    }
+  }
+
+  /// 恢复一条已安装记录；单条损坏只影响它自己。
+  Future<void> _restoreInstalledRecord(Object? raw) async {
+    if (raw is! Map) return;
+    String? recordId;
+    try {
+      final record = Map<String, dynamic>.from(raw);
+      if (record['repository'] case final String repository) {
+        record['repository'] = canonicalSourcePluginUrl(repository);
+      }
+      final plugin = InstalledSourcePlugin.fromJson(record);
+      recordId = plugin.manifest.id;
+      _installed[recordId] = plugin;
+      _installedVersions[recordId] = plugin.manifest.version;
+      _historicalPresentations[recordId] = historicalSourcePresentation(
+        plugin.manifest.presentation,
+      );
+      if (!await File(
+        p.join(_root!.path, plugin.directory, plugin.manifest.entry),
+      ).exists()) {
+        _fileErrors[recordId] = 'plugin_entry_missing';
+      }
+    } catch (_) {
+      final manifest = raw['manifest'];
+      if (manifest is Map && manifest['id'] is String) {
+        recordId = manifest['id'] as String;
+      }
+      if (recordId != null) {
+        _fileErrors[recordId] = 'plugin_record_invalid';
+      }
+    }
   }
 
   Future<void> _backupLegacyScripts() async {

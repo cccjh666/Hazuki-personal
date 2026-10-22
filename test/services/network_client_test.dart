@@ -127,6 +127,41 @@ void main() {
       },
     );
 
+    test('backs off exponentially between retries', () async {
+      final startedAt = <DateTime>[];
+      late _FakeAdapter adapter;
+      adapter = _FakeAdapter((options, callCount) {
+        startedAt.add(DateTime.now());
+        if (callCount < 3) {
+          throw DioException.connectionError(
+            requestOptions: options,
+            reason: 'connection refused',
+          );
+        }
+        return ResponseBody.fromString('ok', 200);
+      });
+      final dio = Dio(BaseOptions(validateStatus: (status) => true))
+        ..httpClientAdapter = adapter;
+      final client = HazukiNetworkClient(
+        dio: dio,
+        retryDelay: const Duration(milliseconds: 60),
+        maxAttempts: 3,
+      );
+
+      final response = await client.get<String>(
+        'https://example.test/data',
+        options: Options(responseType: ResponseType.plain),
+      );
+
+      expect(response.data, 'ok');
+      expect(adapter.callCount, 3);
+      final firstGap = startedAt[1].difference(startedAt[0]).inMilliseconds;
+      final secondGap = startedAt[2].difference(startedAt[1]).inMilliseconds;
+      expect(firstGap, greaterThanOrEqualTo(50));
+      // 第二次退避应明显长于第一次（60ms → 120ms），允许调度抖动。
+      expect(secondGap, greaterThanOrEqualTo(firstGap + 40));
+    });
+
     test('classifies retryable status responses as transient', () {
       final requestOptions = RequestOptions(path: 'https://example.test');
       final error = DioException(

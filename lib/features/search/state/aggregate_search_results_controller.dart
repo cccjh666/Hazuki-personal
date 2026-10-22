@@ -32,28 +32,39 @@ class AggregateSearchSectionState {
 }
 
 class AggregateSearchResultsController extends ChangeNotifier {
-  AggregateSearchResultsController({required SourceSearchGateway sourceService})
-    : _sourceService = sourceService,
-      _loader = null,
-      sections = sourceService.allowedSources
-          .map((source) => AggregateSearchSectionState(source: source))
-          .toList() {
-    _sourceService.addListener(_syncSources);
-  }
-
-  AggregateSearchResultsController.withLoader({
+  AggregateSearchResultsController({
     required SourceSearchGateway sourceService,
-    required AggregateSearchPageLoader loader,
+    int maxConcurrentLoads = defaultMaxConcurrentLoads,
   }) : _sourceService = sourceService,
-       _loader = loader,
+       _loader = null,
+       _maxConcurrentLoads = maxConcurrentLoads < 1 ? 1 : maxConcurrentLoads,
        sections = sourceService.allowedSources
            .map((source) => AggregateSearchSectionState(source: source))
            .toList() {
     _sourceService.addListener(_syncSources);
   }
 
+  AggregateSearchResultsController.withLoader({
+    required SourceSearchGateway sourceService,
+    required AggregateSearchPageLoader loader,
+    int maxConcurrentLoads = defaultMaxConcurrentLoads,
+  }) : _sourceService = sourceService,
+       _loader = loader,
+       _maxConcurrentLoads = maxConcurrentLoads < 1 ? 1 : maxConcurrentLoads,
+       sections = sourceService.allowedSources
+           .map((source) => AggregateSearchSectionState(source: source))
+           .toList() {
+    _sourceService.addListener(_syncSources);
+  }
+
+  /// 同时进行的源请求上限。源多时一次性全发出去会让每个源的 JS 运行时
+  /// 和网络连接同时启动，首屏搜索明显卡顿；限制在少量并发既不影响总耗时
+  /// （瓶颈是单源延迟），又能让最先返回的结果尽早出现在屏幕上。
+  static const int defaultMaxConcurrentLoads = 3;
+
   final SourceSearchGateway _sourceService;
   final AggregateSearchPageLoader? _loader;
+  final int _maxConcurrentLoads;
   final List<AggregateSearchSectionState> sections;
 
   String _keyword = '';
@@ -99,10 +110,33 @@ class AggregateSearchResultsController extends ChangeNotifier {
     }
     _notify();
 
-    await Future.wait([
+    await _runWithConcurrencyLimit([
       for (final section in sections)
-        _loadSectionPage(messages, section, page: 1, append: false),
+        () => _loadSectionPage(messages, section, page: 1, append: false),
     ]);
+  }
+
+  /// 按 [_maxConcurrentLoads] 分批执行任务，保持「先完成先展示」的顺序。
+  ///
+  /// 每个任务内部已经捕获了自身异常（单源失败只写该 section 的
+  /// `errorMessage`），所以这里不需要额外的错误兜底。
+  Future<void> _runWithConcurrencyLimit(
+    List<Future<void> Function()> jobs,
+  ) async {
+    if (jobs.isEmpty) return;
+    final workers = _maxConcurrentLoads < jobs.length
+        ? _maxConcurrentLoads
+        : jobs.length;
+    var nextIndex = 0;
+    Future<void> worker() async {
+      while (true) {
+        final index = nextIndex++;
+        if (index >= jobs.length) return;
+        await jobs[index]();
+      }
+    }
+
+    await Future.wait([for (var i = 0; i < workers; i++) worker()]);
   }
 
   Future<void> retry(

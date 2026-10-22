@@ -55,17 +55,20 @@ class HazukiNetworkClient {
     String sourceKey = '',
     HazukiNetworkUrlNormalizer urlNormalizer = normalizeHazukiRequestUrl,
     Duration retryDelay = const Duration(milliseconds: 250),
+    Duration maxRetryDelay = const Duration(seconds: 2),
     int maxAttempts = 2,
   }) : dio = dio ?? Dio(),
        _sourceKey = sourceKey,
        _urlNormalizer = urlNormalizer,
        _retryDelay = retryDelay,
+       _maxRetryDelay = maxRetryDelay,
        _maxAttempts = maxAttempts < 1 ? 1 : maxAttempts;
 
   final Dio dio;
   final String _sourceKey;
   final HazukiNetworkUrlNormalizer _urlNormalizer;
   final Duration _retryDelay;
+  final Duration _maxRetryDelay;
   final int _maxAttempts;
 
   String normalizeUrl(String url) {
@@ -129,7 +132,7 @@ class HazukiNetworkClient {
           return response;
         }
         attempt++;
-        await _delayBeforeRetry();
+        await _delayBeforeRetry(attempt);
       } catch (error) {
         if (!_shouldRetry(
           method: normalizedMethod,
@@ -140,7 +143,7 @@ class HazukiNetworkClient {
           rethrow;
         }
         attempt++;
-        await _delayBeforeRetry();
+        await _delayBeforeRetry(attempt);
       }
     }
   }
@@ -212,7 +215,7 @@ class HazukiNetworkClient {
           return response;
         }
         attempt++;
-        await _delayBeforeRetry();
+        await _delayBeforeRetry(attempt);
       } catch (error) {
         if (!_shouldRetry(
           method: 'GET',
@@ -223,7 +226,7 @@ class HazukiNetworkClient {
           rethrow;
         }
         attempt++;
-        await _delayBeforeRetry();
+        await _delayBeforeRetry(attempt);
       }
     }
   }
@@ -265,10 +268,21 @@ class HazukiNetworkClient {
     return isHazukiTransientStatusCode(statusCode);
   }
 
-  Future<void> _delayBeforeRetry() {
+  /// 指数退避：第 n 次失败后等待 `retryDelay * 2^(n-1)`，上限 [maxRetryDelay]。
+  ///
+  /// 固定 250ms 在服务端瞬时抖动（429/503）时几乎等于没等，容易把对端打得
+  /// 更死；退避后第一次重试仍然很快，后续逐步拉开。
+  Future<void> _delayBeforeRetry(int attempt) {
     if (_retryDelay == Duration.zero) {
       return Future<void>.value();
     }
-    return Future<void>.delayed(_retryDelay);
+    final rawShift = attempt - 1;
+    final shift = rawShift < 0
+        ? 0
+        : (rawShift > 5 ? 5 : rawShift);
+    final delay = _retryDelay * (1 << shift);
+    return Future<void>.delayed(
+      delay > _maxRetryDelay ? _maxRetryDelay : delay,
+    );
   }
 }
