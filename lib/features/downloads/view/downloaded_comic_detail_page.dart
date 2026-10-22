@@ -85,6 +85,14 @@ class DownloadedComicDetailPage extends StatelessWidget {
               child: DownloadedComicMetadata(
                 tags: comic.tags,
                 uploader: comic.uploader,
+                onCopyValue: (value) async {
+                  await Clipboard.setData(ClipboardData(text: value));
+                  if (!context.mounted) return;
+                  await showHazukiPrompt(
+                    context,
+                    l10n(context).downloadsAuthorCopied,
+                  );
+                },
               ),
             ),
           ],

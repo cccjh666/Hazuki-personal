@@ -183,32 +183,61 @@ class DownloadedComicMetadata extends StatelessWidget {
     super.key,
     required this.tags,
     required this.uploader,
+    this.onCopyValue,
   });
 
   final Map<String, List<String>> tags;
   final String uploader;
 
+  /// 点击作者/上传者时回调（用于复制到剪贴板）；为 null 时这些值不可点。
+  final ValueChanged<String>? onCopyValue;
+
+  /// 作者类标签名：不同源可能用不同写法，命中即允许复制。
+  static const Set<String> _authorLikeLabels = <String>{
+    '作者',
+    '著者',
+    '作者名',
+    '上传者',
+    '上傳者',
+    'author',
+    'authors',
+    'uploader',
+  };
+
+  static bool _isAuthorLikeLabel(String label) =>
+      _authorLikeLabels.contains(label.trim().toLowerCase());
+
   @override
   Widget build(BuildContext context) {
-    final entries = <MapEntry<String, List<String>>>[
-      ...tags.entries,
+    final rows = <({String label, List<String> values, bool copyable})>[
+      for (final entry in tags.entries)
+        (
+          label: entry.key,
+          values: entry.value,
+          copyable: _isAuthorLikeLabel(entry.key),
+        ),
       if (uploader.trim().isNotEmpty)
-        MapEntry(l10n(context).comicDetailUploader, <String>[uploader.trim()]),
+        (
+          label: l10n(context).comicDetailUploader,
+          values: <String>[uploader.trim()],
+          copyable: true,
+        ),
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: entries
-          .where((entry) => entry.value.any((value) => value.trim().isNotEmpty))
-          .map(
-            (entry) => Padding(
+      children: [
+        for (final row in rows)
+          if (row.values.any((value) => value.trim().isNotEmpty))
+            Padding(
               padding: const EdgeInsets.only(bottom: 6),
               child: _DownloadedComicMetadataRow(
-                label: entry.key,
-                values: entry.value,
+                label: row.label,
+                values: row.values,
+                // 只有作者类行支持复制，避免点普通标签时误触。
+                onCopyValue: row.copyable ? onCopyValue : null,
               ),
             ),
-          )
-          .toList(growable: false),
+      ],
     );
   }
 }
@@ -250,10 +279,14 @@ class _DownloadedComicMetadataRow extends StatelessWidget {
   const _DownloadedComicMetadataRow({
     required this.label,
     required this.values,
+    this.onCopyValue,
   });
 
   final String label;
   final List<String> values;
+
+  /// 非 null 时每个值都可点击复制，并在标签右侧显示复制图标。
+  final ValueChanged<String>? onCopyValue;
 
   @override
   Widget build(BuildContext context) {
@@ -283,28 +316,58 @@ class _DownloadedComicMetadataRow extends StatelessWidget {
             spacing: 5,
             runSpacing: 4,
             children: normalizedValues
-                .map(
-                  (value) => Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 7,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: colorScheme.tertiaryContainer,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      value,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: colorScheme.onTertiaryContainer,
-                      ),
-                    ),
-                  ),
-                )
+                .map((value) => _buildValueChip(theme, colorScheme, value))
                 .toList(growable: false),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildValueChip(
+    ThemeData theme,
+    ColorScheme colorScheme,
+    String value,
+  ) {
+    final copyHandler = onCopyValue;
+    final chip = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: colorScheme.tertiaryContainer,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            value,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: colorScheme.onTertiaryContainer,
+            ),
+          ),
+          if (copyHandler != null) ...[
+            const SizedBox(width: 4),
+            Icon(
+              Icons.copy_all_outlined,
+              size: 12,
+              color: colorScheme.onTertiaryContainer.withValues(alpha: 0.7),
+            ),
+          ],
+        ],
+      ),
+    );
+    if (copyHandler == null) return chip;
+    return Semantics(
+      button: true,
+      // 让读屏播报「作者：xxx」而不是重复播报内部文本。
+      label: '$label：$value',
+      excludeSemantics: true,
+      child: InkWell(
+        key: ValueKey<String>('downloaded_metadata_copy_$label'),
+        borderRadius: BorderRadius.circular(999),
+        onTap: () => copyHandler(value),
+        child: chip,
+      ),
     );
   }
 }
