@@ -1,3 +1,10 @@
+> **本项目是基于 [LuckyLxi/Hazuki](https://github.com/LuckyLxi/Hazuki) v1.2.0 的个人改版（非官方）**
+>
+> - 已**移除应用内自动更新 / 检查更新 / 安装器拉起**，避免被官方版本覆盖安装
+> - 下载页新增检索、分组独立文件夹、批量操作等改进（详见 [MODIFICATIONS.md](MODIFICATIONS.md)）
+> - 采用 GPL-3.0 授权，改版内容同样遵循 GPL-3.0
+> - `main` 分支为上游 v1.2.0 原始代码，改版代码在 `fork-no-auto-update` 分支
+
 ## 界面预览
 
 <table>
