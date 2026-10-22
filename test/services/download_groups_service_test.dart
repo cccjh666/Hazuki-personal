@@ -220,6 +220,46 @@ void main() {
     });
   });
 
+  test('groups that would share an on-disk folder are rejected', () async {
+    await service.initialize(const []);
+    await service.createGroup('Reading');
+
+    // 同名分组会共用 Group_Reading 目录：两组的漫画混在一起，
+    // 删其中一组还会波及另一组，必须拒绝。
+    await expectLater(
+      service.createGroup('Reading'),
+      throwsA(isA<DuplicateDownloadGroupNameException>()),
+    );
+
+    // 非法字符被清洗成下划线，a:b 与 a_b 同样落到 Group_a_b。
+    await service.createGroup('a:b');
+    await expectLater(
+      service.createGroup('a_b'),
+      throwsA(isA<DuplicateDownloadGroupNameException>()),
+    );
+
+    // 大小写不同在 Windows 上也是同一个目录。
+    await expectLater(
+      service.createGroup('reading'),
+      throwsA(isA<DuplicateDownloadGroupNameException>()),
+    );
+  });
+
+  test('renaming onto an existing group folder is rejected', () async {
+    await service.initialize(const []);
+    final first = await service.createGroup('First');
+    await service.createGroup('Second');
+
+    await expectLater(
+      service.renameGroup(first.id, 'second'),
+      throwsA(isA<DuplicateDownloadGroupNameException>()),
+    );
+
+    // 只改大小写不算冲突：目标是它自己。
+    final renamed = await service.renameGroup(first.id, 'FIRST');
+    expect(renamed.name, 'FIRST');
+  });
+
   test('deleting a group moves its comics to default', () async {
     await service.initialize(const ['comic-a']);
     final group = await service.createGroup('Temporary');

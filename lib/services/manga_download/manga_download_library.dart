@@ -19,6 +19,9 @@ abstract interface class MangaDownloadLibrary implements Listenable {
     String? groupFolderName,
   );
   Future<void> renameGroupFolder(String oldFolderName, String newFolderName);
+
+  /// 删除分组对应的磁盘目录（仅当目录为空）。返回是否已清理干净。
+  Future<bool> removeGroupFolder(String folderName);
   Future<void> pauseTask(String storageKey);
   Future<void> resumeTask(String storageKey);
   Future<void> pauseAllTasks();

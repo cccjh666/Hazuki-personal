@@ -1395,6 +1395,7 @@
   "downloadsComicMovedToGroup": "已将该漫画移动到{group}",
   "downloadsSelectedComicCount": "已选择{count}部漫画",
   "downloadsGroupNameRequired": "请输入分组名称",
+  "downloadsGroupNameDuplicate": "已有同名分组，请换一个名称",
   "downloadsBatchGroupAction": "分组选中漫画",
   "downloadsBack": "返回",
   "downloadsMoveOrAddAction": "移动/添加",

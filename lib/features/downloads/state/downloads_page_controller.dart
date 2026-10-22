@@ -259,6 +259,18 @@ class DownloadsPageController extends ChangeNotifier {
       _downloadGroupsService.reorderGroups(orderedGroupIds);
 
   Future<void> deleteGroup(String groupId) async {
+    // 删除前先记下磁盘目录名：删除后 groups 里已经没有这个组了。
+    DownloadGroup? deletingGroup;
+    for (final group in groups) {
+      if (group.id == groupId) {
+        deletingGroup = group;
+        break;
+      }
+    }
+    final folderName = (deletingGroup == null || deletingGroup.isDefault)
+        ? null
+        : deletingGroup.folderName;
+
     final affectedKeys = _downloadGroupsService.comicKeysForGroup(groupId);
     await _downloadGroupsService.deleteGroup(groupId);
     if (_selectedGroupId == groupId) {
@@ -266,6 +278,11 @@ class DownloadsPageController extends ChangeNotifier {
     }
     for (final storageKey in affectedKeys) {
       await _syncComicDiskLocation(storageKey);
+    }
+    // 成员搬回默认组之后再删组目录，否则目录非空删不掉。目录里若仍有
+    // 搬迁失败的漫画或用户手动放入的文件，会被保留而不是一并删除。
+    if (folderName != null) {
+      await _downloadService.removeGroupFolder(folderName);
     }
     _notify();
   }

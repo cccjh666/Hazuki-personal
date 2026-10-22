@@ -8,6 +8,7 @@ import '../../models/hazuki_models.dart';
 import '../source/source_capabilities.dart';
 import 'manga_download_commands.dart';
 import 'manga_download_library.dart';
+import 'download_group_folders.dart';
 import 'manga_download_lifecycle_coordinator.dart';
 import 'manga_download_state.dart';
 import 'manga_download_files.dart';
@@ -53,6 +54,7 @@ class MangaDownloadService extends ChangeNotifier
   Future<void>? _initFuture;
   final MangaDownloadState _state = MangaDownloadState();
   late final MangaDownloadFiles _files;
+  static const DownloadGroupFolders _groupFolders = DownloadGroupFolders();
   List<MangaDownloadTask> get _tasks => _state.tasks;
   List<DownloadedMangaComic> get _downloaded => _state.downloadedComics;
   late final MangaDownloadStateStore _stateStore;
@@ -357,6 +359,8 @@ class MangaDownloadService extends ChangeNotifier
         for (final dir in directories) {
           if (_isPathWithin(dir, rootDir) && await dir.exists()) {
             await dir.delete(recursive: true);
+            // 漫画在分组子目录里时，删完可能留下一个空的组目录。
+            await _pruneEmptyContainer(dir, rootDir);
           }
         }
       } catch (_) {}
@@ -385,6 +389,9 @@ class MangaDownloadService extends ChangeNotifier
   }
 
   /// 组重命名时，同步重命名对应的磁盘目录。
+  ///
+  /// 目标目录已存在时不再静默放弃（否则元数据改名成功、磁盘目录却仍是旧的）：
+  /// 空目录先清理再重命名，非空则把源目录的子项逐个合并过去，同名一律不覆盖。
   @override
   Future<void> renameGroupFolder(
     String oldFolderName,
@@ -397,19 +404,29 @@ class MangaDownloadService extends ChangeNotifier
     final rootDir = await _ensureRootDir();
     final oldDir = Directory('${rootDir.path}/$oldName');
     final newDir = Directory('${rootDir.path}/$newName');
-    if (!await oldDir.exists() || await newDir.exists()) return;
+    if (!await oldDir.exists() || !_isPathWithin(oldDir, rootDir)) return;
 
-    try {
-      await oldDir.rename(newDir.path);
-    } catch (_) {
-      return;
-    }
+    // 移动之前先确定受影响的记录：移动完成后就判断不出旧前缀了。
+    final affected = [
+      for (final comic in _downloaded)
+        if (_comicUnderDirectory(comic, oldDir.path)) comic,
+    ];
+
+    // 目标目录可能已存在（上次删除分组残留的空目录，或人工建的同名目录）。
+    // 统一交给 moveContents：空目录先清理再整体重命名，非空则合并缺失项，
+    // 同名一律不覆盖——避免出现「元数据已改名、磁盘目录还是旧的」。
+    final movedDirNames = await _groupFolders.moveContents(oldDir, newDir);
+    // 合并后源目录可能还有同名残留，空的就顺手删掉。
+    await _groupFolders.deleteIfEmpty(oldDir);
 
     final relocated = <DownloadedMangaComic>[];
-    for (final comic in _downloaded) {
-      if (_comicUnderDirectory(comic, oldDir.path)) {
-        relocated.add(_rewriteComicPaths(comic, oldDir.path, newDir.path));
+    for (final comic in affected) {
+      if (movedDirNames.isNotEmpty &&
+          !movedDirNames.contains(comic.downloadDirName)) {
+        // 同名冲突导致该目录留在原处，记录保持旧路径才与磁盘一致。
+        continue;
       }
+      relocated.add(_rewriteComicPaths(comic, oldDir.path, newDir.path));
     }
     for (final comic in relocated) {
       _state.upsertDownloadedComic(comic);
@@ -420,6 +437,30 @@ class MangaDownloadService extends ChangeNotifier
     }
     await _persistState();
     notifyListeners();
+  }
+
+  /// 删除分组对应的磁盘目录（**仅当目录为空**）。
+  ///
+  /// 调用时机应在组内漫画搬回默认组之后。返回 true 表示目录已删除或本来
+  /// 不存在；false 表示目录非空被保留——组内还有搬迁失败的漫画，或用户
+  /// 手动放入的文件，此时宁留冗余也不删数据。
+  @override
+  Future<bool> removeGroupFolder(String folderName) async {
+    final name = folderName.trim();
+    if (name.isEmpty) return true;
+    if (!await _ensureAndroidDownloadsAccess()) return false;
+    final rootDir = await _ensureRootDir();
+    final dir = Directory('${rootDir.path}/$name');
+    if (!_isPathWithin(dir, rootDir)) return false;
+    return _groupFolders.deleteIfEmpty(dir);
+  }
+
+  /// 漫画目录删除后，若其所在的组容器目录已经空了，一并清理。
+  Future<void> _pruneEmptyContainer(Directory dir, Directory rootDir) async {
+    final parent = dir.parent;
+    if (_sameDirectoryPath(parent, rootDir)) return;
+    if (!_isPathWithin(parent, rootDir)) return;
+    await _groupFolders.deleteIfEmpty(parent);
   }
 
   Directory _resolveComicTargetDir(
@@ -439,35 +480,17 @@ class MangaDownloadService extends ChangeNotifier
     Directory fromDir,
     Directory toDir,
   ) async {
-    if (!await fromDir.exists() || await toDir.exists()) return;
-    await toDir.parent.create(recursive: true);
-    try {
-      await fromDir.rename(toDir.path);
-    } catch (_) {
-      await _copyDirectoryRecursive(fromDir, toDir);
-      try {
-        await fromDir.delete(recursive: true);
-      } catch (_) {}
-    }
+    if (!await fromDir.exists()) return;
+    // 目标已存在时不再静默放弃，否则会出现「分组记录已改、文件还留在旧位置」。
+    // moveContents 会按「目标不存在→整体重命名 / 目标为空→先清理再重命名 /
+    // 目标非空→合并缺失子项」处理，同名项一律不覆盖。
+    await _groupFolders.moveContents(fromDir, toDir);
+    await _groupFolders.deleteIfEmpty(fromDir);
     final updated = _rewriteComicPaths(comic, fromDir.path, toDir.path);
     _state.upsertDownloadedComic(updated);
     await _files.writeMetadataFile(toDir, updated);
     await _persistState();
     notifyListeners();
-  }
-
-  Future<void> _copyDirectoryRecursive(Directory from, Directory to) async {
-    if (!await to.exists()) await to.create(recursive: true);
-    await for (final entity in from.list()) {
-      if (entity is File) {
-        await entity.copy('${to.path}/${_baseName(entity.path)}');
-      } else if (entity is Directory) {
-        await _copyDirectoryRecursive(
-          entity,
-          Directory('${to.path}/${_baseName(entity.path)}'),
-        );
-      }
-    }
   }
 
   DownloadedMangaComic _rewriteComicPaths(
@@ -528,12 +551,6 @@ class MangaDownloadService extends ChangeNotifier
       normalized = normalized.substring(0, normalized.length - 1);
     }
     return Platform.isWindows ? normalized.toLowerCase() : normalized;
-  }
-
-  String _baseName(String path) {
-    final normalized = path.replaceAll('\\', '/');
-    final parts = normalized.split('/').where((part) => part.isNotEmpty);
-    return parts.isEmpty ? '' : parts.last;
   }
 
   @override

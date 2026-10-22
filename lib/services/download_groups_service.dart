@@ -187,6 +187,7 @@ class DownloadGroupsService extends ChangeNotifier
     if (name.isEmpty) {
       throw ArgumentError.value(rawName, 'name');
     }
+    _ensureFolderNameAvailable(name);
     final now = DateTime.now().millisecondsSinceEpoch;
     final nextSortOrder =
         _groups
@@ -226,9 +227,28 @@ class DownloadGroupsService extends ChangeNotifier
     if (name.isEmpty) {
       throw ArgumentError.value(rawName, 'name');
     }
+    _ensureFolderNameAvailable(name, excludingGroupId: groupId);
     await _store.renameGroup(groupId, name);
     await reload();
     return _groups.firstWhere((group) => group.id == groupId);
+  }
+
+  /// 校验目标组名不会与其它分组的磁盘目录冲突。
+  ///
+  /// 比较的是清洗后的目录名并忽略大小写：Android 与 Windows 上目录名
+  /// 大小写敏感性不同，统一按不敏感处理才不会在某个平台上串目录。
+  void _ensureFolderNameAvailable(String name, {String? excludingGroupId}) {
+    final folderName = DownloadGroup.folderNameForName(name).toLowerCase();
+    for (final group in _groups) {
+      if (group.isDefault) continue;
+      if (excludingGroupId != null && group.id == excludingGroupId) continue;
+      if (group.folderName.toLowerCase() == folderName) {
+        throw DuplicateDownloadGroupNameException(
+          requestedName: name,
+          existingName: group.name,
+        );
+      }
+    }
   }
 
   @override

@@ -1407,6 +1407,7 @@
     }
   },
   "downloadsGroupNameRequired": "Enter a group name",
+  "downloadsGroupNameDuplicate": "A group with this name already exists",
   "downloadsBatchGroupAction": "Group selected comics",
   "downloadsBack": "Back",
   "downloadsMoveOrAddAction": "Move / Add",

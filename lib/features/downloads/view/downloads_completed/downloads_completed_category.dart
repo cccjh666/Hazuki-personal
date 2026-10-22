@@ -352,10 +352,27 @@ class _DownloadsCategoryShellDialogState
     );
   }
 
+  /// 已存在的分组磁盘目录名（小写）。判重比较目录名而不是组名，
+  /// 因为非法字符会被清洗成下划线，`a:b` 与 `a_b` 实际共用一个目录。
+  Set<String> _existingGroupFolderNames({String? excludeGroupId}) => {
+    for (final group in _groups)
+      if (!group.isDefault && group.id != excludeGroupId)
+        group.folderName.toLowerCase(),
+  };
+
   Future<void> _createGroup() async {
-    final name = await _showCreateGroupDialog(context);
+    final name = await _showCreateGroupDialog(
+      context,
+      existingFolderNames: _existingGroupFolderNames(),
+    );
     if (name == null || !mounted) return;
-    final group = await widget.onCreateGroup(name);
+    final DownloadGroup group;
+    try {
+      group = await widget.onCreateGroup(name);
+    } on DuplicateDownloadGroupNameException {
+      // 对话框已做实时校验，这里只兜底：并发/sync 合并后仍可能撞名。
+      return;
+    }
     if (!mounted) return;
     setState(() {
       _animateGroupTiles = false;
@@ -369,9 +386,18 @@ class _DownloadsCategoryShellDialogState
 
   Future<void> _renameGroup(DownloadGroup group) async {
     unawaited(HapticFeedback.lightImpact());
-    final name = await _showRenameGroupDialog(context, group.name);
+    final name = await _showRenameGroupDialog(
+      context,
+      group.name,
+      existingFolderNames: _existingGroupFolderNames(excludeGroupId: group.id),
+    );
     if (name == null || !mounted) return;
-    final renamed = await widget.onRenameGroup(group.id, name);
+    final DownloadGroup renamed;
+    try {
+      renamed = await widget.onRenameGroup(group.id, name);
+    } on DuplicateDownloadGroupNameException {
+      return;
+    }
     if (!mounted) return;
     setState(() {
       _groups = [
@@ -1004,7 +1030,10 @@ class _DownloadGroupHighlight extends StatelessWidget {
   }
 }
 
-Future<String?> _showCreateGroupDialog(BuildContext context) async {
+Future<String?> _showCreateGroupDialog(
+  BuildContext context, {
+  Set<String> existingFolderNames = const {},
+}) async {
   final controller = TextEditingController();
   final strings = l10n(context);
   final value = await showGeneralDialog<String>(
@@ -1030,6 +1059,12 @@ Future<String?> _showCreateGroupDialog(BuildContext context) async {
           valueListenable: controller,
           builder: (context, value, child) {
             final name = value.text.trim();
+            final duplicate =
+                name.isNotEmpty &&
+                existingFolderNames.contains(
+                  DownloadGroup.folderNameForName(name).toLowerCase(),
+                );
+            final blocked = name.isEmpty || duplicate;
             return AlertDialog(
               title: Text(strings.downloadsNewGroup),
               content: TextField(
@@ -1039,10 +1074,12 @@ Future<String?> _showCreateGroupDialog(BuildContext context) async {
                   hintText: strings.downloadsGroupName,
                   errorText: name.isEmpty
                       ? strings.downloadsGroupNameRequired
+                      : duplicate
+                      ? strings.downloadsGroupNameDuplicate
                       : null,
                 ),
                 onSubmitted: (_) {
-                  if (name.isNotEmpty) Navigator.pop(dialogContext, name);
+                  if (!blocked) Navigator.pop(dialogContext, name);
                 },
               ),
               actions: [
@@ -1051,7 +1088,7 @@ Future<String?> _showCreateGroupDialog(BuildContext context) async {
                   child: Text(strings.commonCancel),
                 ),
                 FilledButton(
-                  onPressed: name.isEmpty
+                  onPressed: blocked
                       ? null
                       : () => Navigator.pop(dialogContext, name),
                   child: Text(strings.downloadsCreateGroup),
@@ -1068,8 +1105,9 @@ Future<String?> _showCreateGroupDialog(BuildContext context) async {
 
 Future<String?> _showRenameGroupDialog(
   BuildContext context,
-  String currentName,
-) async {
+  String currentName, {
+  Set<String> existingFolderNames = const {},
+}) async {
   final controller = TextEditingController(text: currentName);
   controller.selection = TextSelection(
     baseOffset: 0,
@@ -1106,6 +1144,12 @@ Future<String?> _showRenameGroupDialog(
           valueListenable: controller,
           builder: (context, value, child) {
             final name = value.text.trim();
+            final duplicate =
+                name.isNotEmpty &&
+                existingFolderNames.contains(
+                  DownloadGroup.folderNameForName(name).toLowerCase(),
+                );
+            final blocked = name.isEmpty || duplicate;
             return AlertDialog(
               key: const ValueKey<String>('downloads_rename_group_dialog'),
               title: Text(strings.downloadsRenameGroup),
@@ -1116,10 +1160,12 @@ Future<String?> _showRenameGroupDialog(
                   hintText: strings.downloadsGroupName,
                   errorText: name.isEmpty
                       ? strings.downloadsGroupNameRequired
+                      : duplicate
+                      ? strings.downloadsGroupNameDuplicate
                       : null,
                 ),
                 onSubmitted: (_) {
-                  if (name.isNotEmpty) Navigator.pop(dialogContext, name);
+                  if (!blocked) Navigator.pop(dialogContext, name);
                 },
               ),
               actions: [
@@ -1128,7 +1174,7 @@ Future<String?> _showRenameGroupDialog(
                   child: Text(strings.commonCancel),
                 ),
                 FilledButton(
-                  onPressed: name.isEmpty
+                  onPressed: blocked
                       ? null
                       : () => Navigator.pop(dialogContext, name),
                   child: Text(strings.commonSave),

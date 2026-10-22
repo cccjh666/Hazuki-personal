@@ -156,6 +156,40 @@ void main() {
     expect(controller.selectedComicIds, isEmpty);
   });
 
+  test('deleting a group moves members home before pruning its folder', () async {
+    addTearDown(controller.dispose);
+    const group = DownloadGroup(
+      id: 'group-reading',
+      name: 'Reading',
+      createdAtMs: 1,
+      sortOrder: 1,
+    );
+    when(() => groups.groups).thenReturn([_defaultGroup, group]);
+    when(
+      () => groups.comicKeysForGroup('group-reading'),
+    ).thenReturn({_comic.storageKey});
+    when(() => groups.deleteGroup('group-reading')).thenAnswer((_) async {});
+    when(
+      () => groups.primaryGroupIdForComic(_comic.storageKey),
+    ).thenReturn(null);
+    when(
+      () => downloads.moveDownloadedComicToGroup(any(), any()),
+    ).thenAnswer((_) async {});
+    when(
+      () => downloads.removeGroupFolder(any()),
+    ).thenAnswer((_) async => true);
+
+    await controller.deleteGroup('group-reading');
+
+    // 必须先搬走组内漫画再删目录，否则目录非空删不掉，磁盘会留下
+    // 一个空文件夹（用户反馈的问题）。
+    verifyInOrder([
+      () => groups.deleteGroup('group-reading'),
+      () => downloads.moveDownloadedComicToGroup(_comic.storageKey, null),
+      () => downloads.removeGroupFolder('Group_Reading'),
+    ]);
+  });
+
   test('manages tasks through the library contract', () async {
     addTearDown(controller.dispose);
     when(() => downloads.pauseTask(any())).thenAnswer((_) async {});
@@ -182,6 +216,12 @@ void main() {
     expect(controller.comicsWithIntegrityIssues, {_comic.storageKey});
   });
 }
+
+const _defaultGroup = DownloadGroup(
+  id: DownloadGroup.defaultGroupId,
+  name: DownloadGroup.defaultGroupName,
+  createdAtMs: 0,
+);
 
 const _comic = DownloadedMangaComic(
   comicId: 'comic',
