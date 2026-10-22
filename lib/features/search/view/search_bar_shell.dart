@@ -20,6 +20,7 @@ class SearchBarShell extends StatelessWidget {
     this.compact = false,
     this.autofocus = false,
     this.forceFocusedAppearance = false,
+    this.hintText,
   });
 
   final TextEditingController controller;
@@ -34,6 +35,9 @@ class SearchBarShell extends StatelessWidget {
   final bool compact;
   final bool autofocus;
   final bool forceFocusedAppearance;
+
+  /// 自定义提示文案；为空时使用全局搜索提示。
+  final String? hintText;
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +56,7 @@ class SearchBarShell extends StatelessWidget {
             final searchBar = SearchBar(
               focusNode: focusNode,
               controller: controller,
-              hintText: strings.searchHint,
+              hintText: hintText ?? strings.searchHint,
               autoFocus: autofocus,
               onTap: () {
                 if (!focusNode.canRequestFocus) {

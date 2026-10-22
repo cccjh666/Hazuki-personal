@@ -55,6 +55,12 @@ class MangaDownloadRecoveryDiskSupport {
     return null;
   }
 
+  /// 判断某个目录是否直接包含图片文件（用于识别“章节目录”这类外观）。
+  Future<bool> hasDirectImageFiles(Directory directory) async {
+    final files = await _listImageFiles(directory, excludeCoverFiles: true);
+    return files.isNotEmpty;
+  }
+
   Future<File?> findLocalCoverFile(Directory comicDir) async {
     Future<File?> visit(Directory directory, int depth) async {
       if (depth > 2) {

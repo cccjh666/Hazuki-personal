@@ -32,21 +32,18 @@ void main() {
     final second = await groups.createGroup('Second');
     await groups.addComicToGroups(comic.storageKey, {first.id, second.id});
 
-    final result = await controller.updateComicGroups(comic, {second.id});
+    final result = await controller.updateComicGroups(comic, second.id);
 
     expect(result.changed, isTrue);
     expect(result.removedGroupIds, {
       DownloadGroupsService.defaultGroupId,
       first.id,
     });
+    expect(groups.groupIdsForComic(comic.storageKey), {second.id});
 
     await groups.addComicToGroup(comic.storageKey, first.id);
     controller.toggleSelection(comic.storageKey);
-    final bulkResult = await controller.updateSelectedComicsGroups({
-      DownloadGroupsService.defaultGroupId: const {},
-      first.id: {comic.storageKey},
-      second.id: const {},
-    });
+    final bulkResult = await controller.updateSelectedComicsGroups(first.id);
 
     expect(bulkResult.comicCount, 1);
     expect(bulkResult.changedGroupCount, 1);
@@ -71,7 +68,7 @@ void main() {
     expect(strings.downloadsBatchRemovedFromGroups(3, 2), '已将3部漫画从2个组中移出');
   });
 
-  test('single comic can be removed from the selected custom group', () async {
+  test('a single comic can be sent back to the default group', () async {
     final database = HazukiDatabase.memory();
     final groups = DownloadGroupsService(database: database);
     final downloads = MangaDownloadService();
@@ -95,10 +92,23 @@ void main() {
     await groups.moveComicToGroup(comic.storageKey, customGroup.id);
     controller.selectGroup(customGroup.id);
 
-    expect(await controller.removeComicFromCurrentGroup(comic), isTrue);
+    // There is no dedicated "remove from group" action any more: the default
+    // group is just another pick, and it lands the comic back on the default.
+    final moved = await controller.updateComicGroups(
+      comic,
+      DownloadGroupsService.defaultGroupId,
+    );
+    expect(moved.changed, isTrue);
     expect(groups.groupIdsForComic(comic.storageKey), {
       DownloadGroupsService.defaultGroupId,
     });
+
+    // Re-picking the group it already lives in changes nothing.
+    final again = await controller.updateComicGroups(
+      comic,
+      DownloadGroupsService.defaultGroupId,
+    );
+    expect(again.changed, isFalse);
 
     controller.dispose();
     downloads.dispose();
@@ -106,7 +116,7 @@ void main() {
     await database.close();
   });
 
-  test('comic only in default group cannot be removed from it', () async {
+  test('batch group update moves the whole selection into one group', () async {
     final database = HazukiDatabase.memory();
     final groups = DownloadGroupsService(database: database);
     final downloads = MangaDownloadService();
@@ -114,23 +124,24 @@ void main() {
       downloadService: downloads,
       downloadGroupsService: groups,
     );
-    const comic = DownloadedMangaComic(
-      comicId: 'comic-a',
-      title: 'Comic A',
-      subTitle: '',
-      description: '',
-      coverUrl: '',
-      localCoverPath: null,
-      chapters: [],
-      updatedAtMillis: 0,
-    );
+    await groups.initialize(const ['comic-a', 'comic-b']);
+    final first = await groups.createGroup('First');
+    final second = await groups.createGroup('Second');
+    final third = await groups.createGroup('Third');
+    await groups.moveComicToGroup('comic-a', first.id);
+    await groups.moveComicToGroup('comic-b', second.id);
+    controller.toggleSelection('comic-a');
+    controller.toggleSelection('comic-b');
+    // The selection spans two groups, so no single group is pre-selected.
+    expect(controller.commonSelectedGroupId, isNull);
 
-    await groups.initialize([comic.storageKey]);
+    final result = await controller.updateSelectedComicsGroups(third.id);
 
-    expect(await controller.removeComicFromCurrentGroup(comic), isFalse);
-    expect(groups.groupIdsForComic(comic.storageKey), {
-      DownloadGroupsService.defaultGroupId,
-    });
+    expect(result.comicCount, 2);
+    expect(result.changedGroupCount, 2);
+    expect(groups.groupIdsForComic('comic-a'), {third.id});
+    expect(groups.groupIdsForComic('comic-b'), {third.id});
+    expect(controller.selectedCount, 0);
 
     controller.dispose();
     downloads.dispose();
@@ -138,39 +149,34 @@ void main() {
     await database.close();
   });
 
-  test(
-    'batch group update preserves untouched per-comic memberships',
-    () async {
-      final database = HazukiDatabase.memory();
-      final groups = DownloadGroupsService(database: database);
-      final downloads = MangaDownloadService();
-      final controller = DownloadsPageController(
-        downloadService: downloads,
-        downloadGroupsService: groups,
-      );
-      await groups.initialize(const ['comic-a', 'comic-b']);
-      final first = await groups.createGroup('First');
-      final second = await groups.createGroup('Second');
-      await groups.moveComicToGroup('comic-a', first.id);
-      await groups.moveComicToGroup('comic-b', second.id);
-      controller.toggleSelection('comic-a');
-      controller.toggleSelection('comic-b');
+  test('batch group update skips comics already in the target group', () async {
+    final database = HazukiDatabase.memory();
+    final groups = DownloadGroupsService(database: database);
+    final downloads = MangaDownloadService();
+    final controller = DownloadsPageController(
+      downloadService: downloads,
+      downloadGroupsService: groups,
+    );
+    await groups.initialize(const ['comic-a', 'comic-b']);
+    final first = await groups.createGroup('First');
+    await groups.moveComicToGroup('comic-a', first.id);
+    controller.toggleSelection('comic-a');
+    controller.toggleSelection('comic-b');
+    expect(controller.commonSelectedGroupId, isNull);
 
-      await controller.updateSelectedComicsGroups({
-        DownloadGroupsService.defaultGroupId: const {},
-        first.id: const {'comic-a', 'comic-b'},
-        second.id: const {'comic-b'},
-      });
+    final result = await controller.updateSelectedComicsGroups(first.id);
 
-      expect(groups.groupIdsForComic('comic-a'), {first.id});
-      expect(groups.groupIdsForComic('comic-b'), {first.id, second.id});
+    expect(result.comicCount, 2);
+    // Only comic-b actually moves; comic-a stays untouched and is not rewritten.
+    expect(result.changedGroupCount, 1);
+    expect(groups.groupIdsForComic('comic-a'), {first.id});
+    expect(groups.groupIdsForComic('comic-b'), {first.id});
 
-      controller.dispose();
-      downloads.dispose();
-      groups.dispose();
-      await database.close();
-    },
-  );
+    controller.dispose();
+    downloads.dispose();
+    groups.dispose();
+    await database.close();
+  });
 
   testWidgets('deleting a local download preserves synced group memberships', (
     tester,

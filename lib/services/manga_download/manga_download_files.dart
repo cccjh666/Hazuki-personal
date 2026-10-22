@@ -28,6 +28,24 @@ class MangaDownloadFiles {
     return directory;
   }
 
+  /// 根据已下载漫画已存的绝对路径推导其磁盘目录（支持按组子文件夹与扁平两种布局）。
+  /// 无法推导时回退到扁平目录 root/downloadDirName。
+  Directory comicDirForDownloadedComic(
+    DownloadedMangaComic comic,
+    Directory root,
+  ) {
+    final cover = comic.localCoverPath?.trim();
+    if (cover != null && cover.isNotEmpty) {
+      return Directory(cover).parent;
+    }
+    for (final chapter in comic.chapters) {
+      if (chapter.imagePaths.isNotEmpty) {
+        return File(chapter.imagePaths.first).parent.parent;
+      }
+    }
+    return Directory('${root.path}/${comic.downloadDirName}');
+  }
+
   Future<Directory> ensureChapterDirectory(
     Directory comicDir,
     MangaChapterDownloadTarget target,

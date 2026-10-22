@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'storage/hazuki_database.dart' hide DownloadGroup;
 import 'download_groups/download_groups_repository.dart';
 import 'download_groups/download_groups_persistence.dart';
+import 'download_groups/download_groups_snapshot.dart';
 import 'download_groups/download_groups_snapshot_codec.dart';
 import 'download_groups/download_groups_sync_merger.dart';
 
@@ -45,6 +46,17 @@ class DownloadGroupsService extends ChangeNotifier
   };
 
   @override
+  String? primaryGroupIdForComic(String comicStorageKey) {
+    String? fallback;
+    for (final entry in _comicKeysByGroup.entries) {
+      if (!entry.value.contains(comicStorageKey)) continue;
+      if (entry.key != defaultGroupId) return entry.key;
+      fallback ??= entry.key;
+    }
+    return fallback;
+  }
+
+  @override
   Future<void> initialize(
     Iterable<String> downloadedComicKeys, {
     Map<String, String> migratedComicKeys = const {},
@@ -55,7 +67,58 @@ class DownloadGroupsService extends ChangeNotifier
       migratedComicKeys: migratedComicKeys,
       notify: false,
     );
+    // Older builds let one comic live in several groups, which duplicated the
+    // download folder on disk. Fold legacy data down to one group per comic.
+    await collapseToSingleGroupMemberships();
     await reload();
+  }
+
+  /// Enforces the "one comic, one group" invariant.
+  ///
+  /// Keeps the most meaningful membership (custom group over the default
+  /// bucket, then the most recently added) and tombstones the others so that
+  /// cloud sync converges instead of resurrecting them.
+  Future<int> collapseToSingleGroupMemberships() async {
+    var collapsed = 0;
+    await _store.transaction(() async {
+      final memberships = await _store.loadMemberships();
+      final byComic = <String, List<DownloadGroupMembership>>{};
+      for (final row in memberships) {
+        byComic.putIfAbsent(row.comicStorageKey, () => []).add(row);
+      }
+      final now = DateTime.now().millisecondsSinceEpoch;
+      for (final entry in byComic.entries) {
+        if (entry.value.length <= 1) continue;
+        final kept = _preferredMembership(entry.value);
+        for (final row in entry.value) {
+          if (row.groupId == kept.groupId) continue;
+          await _store.putMembershipTombstone(row.groupId, entry.key, now);
+        }
+        await _store.deleteMemberships(comicKeys: [entry.key]);
+        await _store.putMembership(kept.groupId, entry.key, kept.addedAtMs);
+        collapsed++;
+      }
+    });
+    if (collapsed > 0) {
+      await reload();
+    }
+    return collapsed;
+  }
+
+  static DownloadGroupMembership _preferredMembership(
+    List<DownloadGroupMembership> rows,
+  ) {
+    var best = rows.first;
+    for (final row in rows.skip(1)) {
+      final rowIsCustom = row.groupId != defaultGroupId;
+      final bestIsCustom = best.groupId != defaultGroupId;
+      if (rowIsCustom != bestIsCustom) {
+        if (rowIsCustom) best = row;
+        continue;
+      }
+      if (row.addedAtMs > best.addedAtMs) best = row;
+    }
+    return best;
   }
 
   @override
@@ -315,6 +378,7 @@ class DownloadGroupsService extends ChangeNotifier
     await reload();
   }
 
+  @override
   Future<void> moveComicsToGroups(
     Iterable<String> comicStorageKeys,
     Iterable<String> groupIds,
@@ -370,6 +434,7 @@ class DownloadGroupsService extends ChangeNotifier
     if (snapshot == null) return;
     await _syncMerger.apply(snapshot, replace: replace);
     await _ensureDefaultGroup();
+    await collapseToSingleGroupMemberships();
     await reload();
   }
 

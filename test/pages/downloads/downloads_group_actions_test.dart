@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hazuki/features/downloads/support/downloads_group_actions.dart';
-import 'package:hazuki/features/downloads/view/downloads_cover_widgets.dart';
 import 'package:hazuki/l10n/app_localizations.dart';
 import 'package:hazuki/services/download_groups_service.dart';
-import 'package:hazuki/services/manga_download/manga_download_service.dart';
 
 void main() {
   testWidgets('upward long press menu anchors to the comic top edge', (
@@ -51,16 +49,15 @@ void main() {
       find.byKey(const ValueKey<String>('downloads_comic_long_press_menu')),
     );
     expect(menuRect.bottom, closeTo(cardRect.top - 8, 0.1));
-    expect(find.text('Move / Add'), findsOneWidget);
-    expect(find.text('Remove from this group'), findsOneWidget);
+    expect(find.text('Move to group'), findsOneWidget);
+    // A comic lives in exactly one group, so the redundant "remove" entry is
+    // gone: moving back to the default group is just another group pick.
+    expect(find.text('Remove from this group'), findsNothing);
     expect(find.text('Add to group'), findsNothing);
-    expect(find.text('Move to group'), findsNothing);
   });
 
-  testWidgets('group picker saves multiple selections with one action', (
-    tester,
-  ) async {
-    Set<String>? result;
+  testWidgets('group picker keeps exactly one group selected', (tester) async {
+    String? result;
     await tester.pumpWidget(
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -80,9 +77,8 @@ void main() {
                     DownloadGroup(id: 'a', name: 'A', createdAtMs: 1),
                     DownloadGroup(id: 'b', name: 'B', createdAtMs: 2),
                   ],
-                  initiallySelectedGroupIds: const {
-                    DownloadGroupsService.defaultGroupId,
-                  },
+                  initiallySelectedGroupId:
+                      DownloadGroupsService.defaultGroupId,
                 );
               },
               child: const Text('Open'),
@@ -102,28 +98,47 @@ void main() {
       dialog.insetPadding,
       const EdgeInsets.symmetric(horizontal: 40, vertical: 48),
     );
-    expect(find.byType(CheckboxListTile), findsNWidgets(3));
-    expect(
-      tester
-          .widget<CheckboxListTile>(
-            find.widgetWithText(CheckboxListTile, 'Default group'),
-          )
-          .onChanged,
-      isNotNull,
-    );
+    expect(find.byType(CheckboxListTile), findsNothing);
 
-    await tester.tap(find.text('Default group'));
-    await tester.tap(find.text('A'));
-    await tester.tap(find.text('B'));
-    await tester.tap(find.text('A'));
-    await tester.tap(find.text('A'));
-    await tester.tap(find.text('Move / Add'));
+    double checkOpacity(String groupId) => tester
+        .widget<AnimatedOpacity>(
+          find.descendant(
+            of: find.byKey(ValueKey<String>('downloads_pick_group_$groupId')),
+            matching: find.byType(AnimatedOpacity),
+          ),
+        )
+        .opacity;
+
+    // The current group starts selected and nothing else is.
+    expect(checkOpacity(DownloadGroupsService.defaultGroupId), 1);
+    expect(checkOpacity('a'), 0);
+    expect(checkOpacity('b'), 0);
+
+    await tester.tap(find.byKey(const ValueKey<String>('downloads_pick_group_a')));
+    await tester.pumpAndSettle();
+    expect(checkOpacity('a'), 1);
+    expect(checkOpacity(DownloadGroupsService.defaultGroupId), 0);
+    expect(checkOpacity('b'), 0);
+
+    await tester.tap(find.byKey(const ValueKey<String>('downloads_pick_group_b')));
+    await tester.pumpAndSettle();
+    expect(checkOpacity('b'), 1);
+    expect(checkOpacity('a'), 0);
+    expect(checkOpacity(DownloadGroupsService.defaultGroupId), 0);
+
+    // Re-selecting the same group changes nothing (no flicker, same result).
+    await tester.tap(find.byKey(const ValueKey<String>('downloads_pick_group_b')));
+    await tester.pumpAndSettle();
+    expect(checkOpacity('b'), 1);
+    expect(checkOpacity('a'), 0);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Move'));
     await tester.pumpAndSettle();
 
-    expect(result, {'a', 'b'});
+    expect(result, 'b');
   });
 
-  testWidgets('long press menu can remove a comic from the current group', (
+  testWidgets('long press menu keeps delete as the only destructive entry', (
     tester,
   ) async {
     DownloadsComicMenuAction? result;
@@ -153,11 +168,12 @@ void main() {
     await tester.tap(find.text('Open menu'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Remove from this group'), findsOneWidget);
-    await tester.tap(find.text('Remove from this group'));
+    expect(find.text('Remove from this group'), findsNothing);
+    expect(find.text('Delete'), findsOneWidget);
+    await tester.tap(find.text('Delete'));
     await tester.pumpAndSettle();
 
-    expect(result, DownloadsComicMenuAction.removeFromCurrentGroup);
+    expect(result, DownloadsComicMenuAction.delete);
   });
 
   testWidgets('group picker only warns after saving without a group', (
@@ -176,7 +192,7 @@ void main() {
                   groups: const [
                     DownloadGroup(id: 'a', name: 'A', createdAtMs: 1),
                   ],
-                  initiallySelectedGroupIds: const {},
+                  initiallySelectedGroupId: null,
                 );
               },
               child: const Text('Open'),
@@ -189,30 +205,29 @@ void main() {
     await tester.tap(find.text('Open'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Select at least one group'), findsNothing);
+    expect(find.text('Select one group'), findsNothing);
     expect(
       tester
-          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Move / Add'))
+          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Move'))
           .onPressed,
       isNotNull,
     );
-    await tester.tap(find.widgetWithText(FilledButton, 'Move / Add'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Move'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Select at least one group'), findsOneWidget);
+    expect(find.text('Select one group'), findsOneWidget);
     final cancelCenter = tester.getCenter(
       find.widgetWithText(TextButton, 'Cancel'),
     );
-    final addCenter = tester.getCenter(
-      find.widgetWithText(FilledButton, 'Move / Add'),
+    final moveCenter = tester.getCenter(
+      find.widgetWithText(FilledButton, 'Move'),
     );
-    expect(cancelCenter.dy, closeTo(addCenter.dy, 0.1));
+    expect(cancelCenter.dy, closeTo(moveCenter.dy, 0.1));
   });
 
-  testWidgets('bulk group dialog morphs into remove confirmation', (
+  testWidgets('bulk group dialog opens straight on the group list', (
     tester,
   ) async {
-    DownloadsBulkGroupSelection? result;
     await tester.pumpWidget(
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -220,15 +235,15 @@ void main() {
         home: Builder(
           builder: (context) => Scaffold(
             body: FilledButton(
-              onPressed: () async {
-                result = await showDownloadsBulkGroupDialog(
+              onPressed: () {
+                showDownloadsBulkGroupDialog(
                   context: context,
                   groups: const [
                     DownloadGroup(id: 'a', name: 'A', createdAtMs: 1),
+                    DownloadGroup(id: 'b', name: 'B', createdAtMs: 2),
                   ],
-                  selectedComics: _comics,
-                  initialComicKeysByGroup: const {'a': {}},
-                  currentGroupName: 'A',
+                  selectedComicCount: 2,
+                  initialGroupId: null,
                 );
               },
               child: const Text('Open'),
@@ -244,35 +259,24 @@ void main() {
     final dialog = find.byKey(
       const ValueKey<String>('downloads_bulk_group_dialog'),
     );
-    expect(tester.getSize(dialog), const Size(280, 250));
+    expect(tester.getSize(dialog), const Size(420, 500));
+    // No intermediate "move / remove" stage any more.
     expect(
       find.byKey(const ValueKey<String>('downloads_bulk_action_stage')),
-      findsOneWidget,
+      findsNothing,
     );
-
-    await tester.tap(
-      find.widgetWithText(FilledButton, 'Remove from this group'),
-    );
-    await tester.pumpAndSettle();
-
-    expect(tester.getSize(dialog), const Size(340, 220));
     expect(
-      find.byKey(
-        const ValueKey<String>('downloads_bulk_remove_confirmation_stage'),
-      ),
+      find.byKey(const ValueKey<String>('downloads_bulk_group_stage')),
       findsOneWidget,
     );
-    expect(find.text('Remove the selected comics from A?'), findsOneWidget);
-    await tester.tap(find.widgetWithText(FilledButton, 'OK'));
-    await tester.pumpAndSettle();
-
-    expect(result?.action, DownloadsBulkGroupAction.removeFromCurrentGroup);
+    expect(find.text('Remove from this group'), findsNothing);
+    expect(find.text('2 comics selected'), findsOneWidget);
   });
 
-  testWidgets('partial group can fill, restore, and edit individual comics', (
+  testWidgets('bulk dialog moves the whole selection into one group', (
     tester,
   ) async {
-    DownloadsBulkGroupSelection? result;
+    String? result;
     await tester.pumpWidget(
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -287,12 +291,8 @@ void main() {
                     DownloadGroup(id: 'a', name: 'A', createdAtMs: 1),
                     DownloadGroup(id: 'b', name: 'B', createdAtMs: 2),
                   ],
-                  selectedComics: _comics,
-                  initialComicKeysByGroup: const {
-                    'a': {'comic-a'},
-                    'b': {},
-                  },
-                  currentGroupName: 'A',
+                  selectedComicCount: 2,
+                  initialGroupId: 'a',
                 );
               },
               child: const Text('Open'),
@@ -304,122 +304,39 @@ void main() {
 
     await tester.tap(find.text('Open'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Move / Add'));
-    await tester.pumpAndSettle();
 
-    final partialTile = find.widgetWithText(CheckboxListTile, 'A');
-    expect(tester.widget<CheckboxListTile>(partialTile).value, isNull);
-    expect(find.widgetWithText(TextButton, 'View'), findsOneWidget);
-
-    await tester.tap(partialTile);
-    await tester.pump();
-    expect(tester.widget<CheckboxListTile>(partialTile).value, isTrue);
-    expect(find.widgetWithText(TextButton, 'View'), findsOneWidget);
-    await tester.pumpAndSettle();
+    expect(find.text('2 comics selected'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('downloads_bulk_group_stage')),
+      findsOneWidget,
+    );
+    expect(find.byType(CheckboxListTile), findsNothing);
     expect(find.widgetWithText(TextButton, 'View'), findsNothing);
-    await tester.tap(partialTile);
-    await tester.pump();
-    expect(tester.widget<CheckboxListTile>(partialTile).value, isNull);
-    expect(find.widgetWithText(TextButton, 'View'), findsOneWidget);
-    await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(TextButton, 'View'));
-    await tester.pump(const Duration(milliseconds: 120));
-    expect(
-      find.byKey(
-        const ValueKey<String>('downloads_group_membership_details_transition'),
-      ),
-      findsOneWidget,
-    );
-    await tester.pumpAndSettle();
-    expect(
-      find.byKey(
-        const ValueKey<String>('downloads_group_membership_details_dialog'),
-      ),
-      findsOneWidget,
-    );
-    expect(find.byType(SegmentedButton<bool>), findsNothing);
-    expect(
-      find.byKey(const ValueKey<String>('downloads_membership_slider')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(
-        const ValueKey<String>('downloads_membership_content_switcher'),
-      ),
-      findsOneWidget,
-    );
-    expect(find.byType(DownloadedComicCover), findsOneWidget);
+    double checkOpacity(String groupId) => tester
+        .widget<AnimatedOpacity>(
+          find.descendant(
+            of: find.byKey(ValueKey<String>('downloads_bulk_group_$groupId')),
+            matching: find.byType(AnimatedOpacity),
+          ),
+        )
+        .opacity;
 
-    await tester.tap(find.byType(DownloadedComicCover));
-    await tester.pump();
-    final dismissingCover = tester.widget<AnimatedOpacity>(
-      find.byKey(const ValueKey<String>('downloads_membership_cover_comic-b')),
-    );
-    expect(dismissingCover.opacity, 0);
-    expect(find.byType(DownloadedComicCover), findsOneWidget);
-    await tester.tap(find.text('Joined'));
-    await tester.pump(const Duration(milliseconds: 100));
-    expect(
-      tester
-          .widget<AnimatedAlign>(
-            find.byKey(
-              const ValueKey<String>('downloads_membership_slider_thumb'),
-            ),
-          )
-          .alignment,
-      Alignment.centerRight,
-    );
-    expect(find.byType(DownloadedComicCover), findsNWidgets(3));
-    await tester.pumpAndSettle();
-    expect(find.byType(DownloadedComicCover), findsNWidgets(2));
-    await tester.tap(find.byType(DownloadedComicCover).first);
-    await tester.pump();
-    final detailsDialog = find.byKey(
-      const ValueKey<String>('downloads_group_membership_details_dialog'),
-    );
+    // The group shared by the selection starts checked, the other one does not.
+    expect(checkOpacity('a'), 1);
+    expect(checkOpacity('b'), 0);
+
     await tester.tap(
-      find.descendant(
-        of: detailsDialog,
-        matching: find.widgetWithText(FilledButton, 'Save'),
-      ),
-    );
-    await tester.pump(const Duration(milliseconds: 100));
-    expect(
-      find.byKey(
-        const ValueKey<String>('downloads_group_membership_details_transition'),
-      ),
-      findsOneWidget,
+      find.byKey(const ValueKey<String>('downloads_bulk_group_b')),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    expect(checkOpacity('b'), 1);
+    expect(checkOpacity('a'), 0);
+    expect(find.text('Select one group'), findsNothing);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Move'));
     await tester.pumpAndSettle();
 
-    expect(result?.action, DownloadsBulkGroupAction.updateMemberships);
-    expect(result?.comicKeysByGroup['a'], {'comic-b'});
-    expect(result?.comicKeysByGroup['b'], isEmpty);
+    expect(result, 'b');
   });
 }
-
-const _comics = [
-  DownloadedMangaComic(
-    comicId: 'comic-a',
-    title: 'Comic A',
-    subTitle: '',
-    description: '',
-    coverUrl: '',
-    localCoverPath: null,
-    chapters: [],
-    updatedAtMillis: 0,
-  ),
-  DownloadedMangaComic(
-    comicId: 'comic-b',
-    title: 'Comic B',
-    subTitle: '',
-    description: '',
-    coverUrl: '',
-    localCoverPath: null,
-    chapters: [],
-    updatedAtMillis: 0,
-  ),
-];

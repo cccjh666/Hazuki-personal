@@ -85,10 +85,14 @@ class MangaDownloadQueueExecutor {
         );
       }
       final rootDir = await _access.ensureRootDir();
-      final comicDir = await _files.ensureComicDirectory(rootDir, task);
+
+      final existingComic = _state.downloadedComicByStorageKey(task.storageKey);
+      final comicDir = existingComic != null
+          ? _files.comicDirForDownloadedComic(existingComic, rootDir)
+          : await _files.ensureComicDirectory(rootDir, task);
 
       var downloadedComic =
-          _state.downloadedComicByStorageKey(task.storageKey) ??
+          existingComic ??
           DownloadedMangaComic(
             comicId: task.comicId,
             sourceKey: task.sourceKey,

@@ -263,7 +263,7 @@ class MangaDownloadService extends ChangeNotifier
       throw FileSystemException('Android downloads access not granted');
     }
     final rootDir = await _ensureRootDir();
-    final comicDir = Directory('${rootDir.path}/${downloaded.downloadDirName}');
+    final comicDir = _files.comicDirForDownloadedComic(downloaded, rootDir);
     final chapterDirectories = <String>{};
     for (final chapter in chaptersToRemove) {
       final directory = await _recoveryScanner.resolveChapterDirForEpId(
@@ -317,48 +317,6 @@ class MangaDownloadService extends ChangeNotifier
     return childPath.startsWith('$parentPath/');
   }
 
-  Set<Directory> _downloadedComicDirectoriesWithinRoot(
-    DownloadedMangaComic comic,
-    Directory rootDir,
-  ) {
-    final paths = <String>[
-      if (comic.localCoverPath != null) comic.localCoverPath!,
-      for (final chapter in comic.chapters) ...chapter.imagePaths,
-    ];
-    final directories = <Directory>{};
-    for (final path in paths) {
-      final directory = _topLevelDirectoryWithinRoot(path, rootDir);
-      if (directory != null) {
-        directories.add(directory);
-      }
-    }
-    return directories;
-  }
-
-  Directory? _topLevelDirectoryWithinRoot(String path, Directory rootDir) {
-    String normalize(String value) {
-      final absolute = File(value).absolute.path.replaceAll('\\', '/');
-      final trimmed = absolute.endsWith('/')
-          ? absolute.substring(0, absolute.length - 1)
-          : absolute;
-      return Platform.isWindows ? trimmed.toLowerCase() : trimmed;
-    }
-
-    final rootPath = normalize(rootDir.path);
-    final filePath = normalize(path);
-    if (!filePath.startsWith('$rootPath/')) {
-      return null;
-    }
-    final relativeParts = filePath
-        .substring(rootPath.length + 1)
-        .split('/')
-        .where((part) => part.isNotEmpty);
-    if (relativeParts.isEmpty) {
-      return null;
-    }
-    return Directory('${rootDir.path}/${relativeParts.first}');
-  }
-
   @override
   Future<void> deleteDownloadedComics(Iterable<String> comicIds) async {
     await ensureInitialized();
@@ -394,8 +352,7 @@ class MangaDownloadService extends ChangeNotifier
         };
         final directories = <Directory>{
           for (final dirName in dirNames) Directory('${rootDir.path}/$dirName'),
-          if (comic != null)
-            ..._downloadedComicDirectoriesWithinRoot(comic, rootDir),
+          if (comic != null) _files.comicDirForDownloadedComic(comic, rootDir),
         };
         for (final dir in directories) {
           if (_isPathWithin(dir, rootDir) && await dir.exists()) {
@@ -407,6 +364,176 @@ class MangaDownloadService extends ChangeNotifier
     _state.removeDownloaded(ids);
     await _persistState();
     notifyListeners();
+  }
+
+  /// 将某部已下载漫画的磁盘目录移动到指定组子目录（或扁平根目录）下。
+  @override
+  Future<void> moveDownloadedComicToGroup(
+    String storageKey,
+    String? groupFolderName,
+  ) async {
+    final comic = _state.downloadedComicByStorageKey(storageKey);
+    if (comic == null) return;
+    if (!await _ensureAndroidDownloadsAccess()) return;
+    final rootDir = await _ensureRootDir();
+
+    final currentDir = _files.comicDirForDownloadedComic(comic, rootDir);
+    final targetDir = _resolveComicTargetDir(comic, rootDir, groupFolderName);
+    if (_sameDirectoryPath(currentDir, targetDir)) return;
+
+    await _relocateComicDirectory(comic, currentDir, targetDir);
+  }
+
+  /// 组重命名时，同步重命名对应的磁盘目录。
+  @override
+  Future<void> renameGroupFolder(
+    String oldFolderName,
+    String newFolderName,
+  ) async {
+    final oldName = oldFolderName.trim();
+    final newName = newFolderName.trim();
+    if (oldName.isEmpty || newName.isEmpty || oldName == newName) return;
+    if (!await _ensureAndroidDownloadsAccess()) return;
+    final rootDir = await _ensureRootDir();
+    final oldDir = Directory('${rootDir.path}/$oldName');
+    final newDir = Directory('${rootDir.path}/$newName');
+    if (!await oldDir.exists() || await newDir.exists()) return;
+
+    try {
+      await oldDir.rename(newDir.path);
+    } catch (_) {
+      return;
+    }
+
+    final relocated = <DownloadedMangaComic>[];
+    for (final comic in _downloaded) {
+      if (_comicUnderDirectory(comic, oldDir.path)) {
+        relocated.add(_rewriteComicPaths(comic, oldDir.path, newDir.path));
+      }
+    }
+    for (final comic in relocated) {
+      _state.upsertDownloadedComic(comic);
+      await _files.writeMetadataFile(
+        _files.comicDirForDownloadedComic(comic, rootDir),
+        comic,
+      );
+    }
+    await _persistState();
+    notifyListeners();
+  }
+
+  Directory _resolveComicTargetDir(
+    DownloadedMangaComic comic,
+    Directory root,
+    String? groupFolderName,
+  ) {
+    final name = groupFolderName?.trim();
+    if (name == null || name.isEmpty) {
+      return Directory('${root.path}/${comic.downloadDirName}');
+    }
+    return Directory('${root.path}/$name/${comic.downloadDirName}');
+  }
+
+  Future<void> _relocateComicDirectory(
+    DownloadedMangaComic comic,
+    Directory fromDir,
+    Directory toDir,
+  ) async {
+    if (!await fromDir.exists() || await toDir.exists()) return;
+    await toDir.parent.create(recursive: true);
+    try {
+      await fromDir.rename(toDir.path);
+    } catch (_) {
+      await _copyDirectoryRecursive(fromDir, toDir);
+      try {
+        await fromDir.delete(recursive: true);
+      } catch (_) {}
+    }
+    final updated = _rewriteComicPaths(comic, fromDir.path, toDir.path);
+    _state.upsertDownloadedComic(updated);
+    await _files.writeMetadataFile(toDir, updated);
+    await _persistState();
+    notifyListeners();
+  }
+
+  Future<void> _copyDirectoryRecursive(Directory from, Directory to) async {
+    if (!await to.exists()) await to.create(recursive: true);
+    await for (final entity in from.list()) {
+      if (entity is File) {
+        await entity.copy('${to.path}/${_baseName(entity.path)}');
+      } else if (entity is Directory) {
+        await _copyDirectoryRecursive(
+          entity,
+          Directory('${to.path}/${_baseName(entity.path)}'),
+        );
+      }
+    }
+  }
+
+  DownloadedMangaComic _rewriteComicPaths(
+    DownloadedMangaComic comic,
+    String fromPath,
+    String toPath,
+  ) {
+    final fromNorm = _normalizePath(fromPath);
+    final toNorm = _normalizePath(toPath);
+    String rewrite(String path) {
+      final normalized = _normalizePath(path);
+      if (normalized.startsWith('$fromNorm/')) {
+        return '$toNorm${normalized.substring(fromNorm.length)}';
+      }
+      return path;
+    }
+
+    final cover = comic.localCoverPath;
+    return comic.copyWith(
+      localCoverPath: cover == null ? null : rewrite(cover),
+      updatedAtMillis: comic.updatedAtMillis,
+      chapters: [
+        for (final chapter in comic.chapters)
+          DownloadedMangaChapter(
+            epId: chapter.epId,
+            title: chapter.title,
+            index: chapter.index,
+            directoryIndex: chapter.directoryIndex,
+            groupId: chapter.groupId,
+            groupTitle: chapter.groupTitle,
+            imagePaths: [for (final p in chapter.imagePaths) rewrite(p)],
+          ),
+      ],
+    );
+  }
+
+  bool _comicUnderDirectory(DownloadedMangaComic comic, String dirPath) {
+    final dirNorm = _normalizePath(dirPath);
+    final cover = comic.localCoverPath?.trim();
+    if (cover != null && cover.isNotEmpty) {
+      return _normalizePath(cover).startsWith('$dirNorm/');
+    }
+    for (final chapter in comic.chapters) {
+      if (chapter.imagePaths.isNotEmpty) {
+        return _normalizePath(chapter.imagePaths.first).startsWith('$dirNorm/');
+      }
+    }
+    return false;
+  }
+
+  bool _sameDirectoryPath(Directory a, Directory b) {
+    return _normalizePath(a.path) == _normalizePath(b.path);
+  }
+
+  String _normalizePath(String path) {
+    var normalized = path.replaceAll('\\', '/');
+    while (normalized.length > 1 && normalized.endsWith('/')) {
+      normalized = normalized.substring(0, normalized.length - 1);
+    }
+    return Platform.isWindows ? normalized.toLowerCase() : normalized;
+  }
+
+  String _baseName(String path) {
+    final normalized = path.replaceAll('\\', '/');
+    final parts = normalized.split('/').where((part) => part.isNotEmpty);
+    return parts.isEmpty ? '' : parts.last;
   }
 
   @override
@@ -458,8 +585,10 @@ class MangaDownloadService extends ChangeNotifier
     final task = _state.removeTask(storageKey);
     if (task == null) return;
     final rootDir = await _ensureRootDir();
-    final comicDir = Directory('${rootDir.path}/${task.downloadDirName}');
     final downloadedComic = _state.downloadedComicByStorageKey(task.storageKey);
+    final comicDir = downloadedComic != null
+        ? _files.comicDirForDownloadedComic(downloadedComic, rootDir)
+        : Directory('${rootDir.path}/${task.downloadDirName}');
     if (task.currentChapterEpId?.isNotEmpty == true) {
       try {
         final chapterDir = await _recoveryScanner.resolveChapterDirForEpId(

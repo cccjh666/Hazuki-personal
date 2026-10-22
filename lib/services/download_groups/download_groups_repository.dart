@@ -12,6 +12,12 @@ abstract interface class DownloadGroupsRepository implements Listenable {
   bool groupContainsComic(String groupId, String comicStorageKey);
   Set<String> groupIdsForComic(String comicStorageKey);
 
+  /// The single group a comic belongs to, or `null` when it has no membership.
+  ///
+  /// Custom groups win over the default bucket so callers always see the most
+  /// meaningful folder for on-disk placement.
+  String? primaryGroupIdForComic(String comicStorageKey);
+
   Future<void> initialize(
     Iterable<String> downloadedComicKeys, {
     Map<String, String> migratedComicKeys = const {},
@@ -34,6 +40,10 @@ abstract interface class DownloadGroupsRepository implements Listenable {
   );
   Future<void> moveComicToGroups(
     String comicStorageKey,
+    Iterable<String> groupIds,
+  );
+  Future<void> moveComicsToGroups(
+    Iterable<String> comicStorageKeys,
     Iterable<String> groupIds,
   );
 }

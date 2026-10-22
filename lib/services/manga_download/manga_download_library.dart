@@ -14,6 +14,11 @@ abstract interface class MangaDownloadLibrary implements Listenable {
   Future<Set<String>> checkDownloadedIntegrity();
   Future<MangaDownloadedScanResult> scanDownloadedComics();
   Future<void> deleteDownloadedComics(Iterable<String> comicIds);
+  Future<void> moveDownloadedComicToGroup(
+    String storageKey,
+    String? groupFolderName,
+  );
+  Future<void> renameGroupFolder(String oldFolderName, String newFolderName);
   Future<void> pauseTask(String storageKey);
   Future<void> resumeTask(String storageKey);
   Future<void> pauseAllTasks();

@@ -53,11 +53,44 @@ class MangaDownloadRecoveryScanner {
         if (entity is! Directory) {
           continue;
         }
+        final name = _entityBaseName(entity);
+        if (name.startsWith('.')) {
+          continue;
+        }
         scannedDirectories++;
         _logScan(
           'Scanning comic directory',
-          content: {'path': entity.path, 'name': _entityBaseName(entity)},
+          content: {'path': entity.path, 'name': name},
         );
+        if (!await _looksLikeComicDirectory(entity)) {
+          // 目录本身不像漫画目录时，视为分组容器目录（自定义下载组），
+          // 继续向下扫描一层带元数据的漫画目录。
+          final nestedComics = await _recoverComicsFromContainerDirectory(
+            entity,
+          );
+          for (final comic in nestedComics) {
+            recoveredComics++;
+            comics.add(comic);
+            _logScan(
+              'Recovered nested downloaded comic',
+              content: {
+                'path': entity.path,
+                'comicId': comic.comicId,
+                'title': comic.title,
+                'chapterCount': comic.chapters.length,
+                'hasCover': comic.localCoverPath != null,
+              },
+            );
+          }
+          if (nestedComics.isEmpty) {
+            _logScan(
+              'Skipped comic directory',
+              level: 'warning',
+              content: {'path': entity.path, 'reason': 'no_completed_chapters'},
+            );
+          }
+          continue;
+        }
         final comic = await _readComicFromDirectory(entity);
         if (comic != null) {
           recoveredComics++;
@@ -105,6 +138,69 @@ class MangaDownloadRecoveryScanner {
       scannedDirectories: scannedDirectories,
       recoveredComics: recoveredComics,
     );
+  }
+
+  /// 判断目录是否本身就是漫画目录：带元数据，或子目录直接存放章节图片。
+  Future<bool> _looksLikeComicDirectory(Directory dir) async {
+    if (await _diskSupport.findMetadataFile(dir) != null) {
+      return true;
+    }
+    try {
+      await for (final entity in dir.list()) {
+        if (entity is! Directory) {
+          continue;
+        }
+        if (_entityBaseName(entity).startsWith('.')) {
+          continue;
+        }
+        if (await _diskSupport.hasDirectImageFiles(entity)) {
+          return true;
+        }
+      }
+    } catch (e) {
+      _logScan(
+        'Comic directory shape scan failed',
+        level: 'warning',
+        content: {'path': dir.path, 'error': e.toString()},
+      );
+    }
+    return false;
+  }
+
+  /// 从分组容器目录中恢复一层嵌套的漫画目录（只认带元数据的目录）。
+  Future<List<DownloadedMangaComic>> _recoverComicsFromContainerDirectory(
+    Directory dir,
+  ) async {
+    final comics = <DownloadedMangaComic>[];
+    final subDirectories = <Directory>[];
+    try {
+      await for (final entity in dir.list()) {
+        if (entity is! Directory) {
+          continue;
+        }
+        if (_entityBaseName(entity).startsWith('.')) {
+          continue;
+        }
+        subDirectories.add(entity);
+      }
+    } catch (e) {
+      _logScan(
+        'Container directory scan failed',
+        level: 'warning',
+        content: {'path': dir.path, 'error': e.toString()},
+      );
+      return comics;
+    }
+    for (final subDirectory in subDirectories) {
+      if (await _diskSupport.findMetadataFile(subDirectory) == null) {
+        continue;
+      }
+      final comic = await _readComicFromDirectory(subDirectory);
+      if (comic != null) {
+        comics.add(comic);
+      }
+    }
+    return comics;
   }
 
   DownloadedMangaComic? sanitizeDownloadedComicState(

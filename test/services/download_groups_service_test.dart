@@ -134,6 +134,48 @@ void main() {
     );
   });
 
+  test('legacy multi-group memberships collapse to one group on startup', () async {
+    await service.initialize(const ['comic-a']);
+    final first = await service.createGroup('First');
+    final second = await service.createGroup('Second');
+    await service.moveComicToGroups('comic-a', {
+      DownloadGroupsService.defaultGroupId,
+      first.id,
+      second.id,
+    });
+    expect(service.groupIdsForComic('comic-a'), hasLength(3));
+
+    // Startup runs the same normalisation path.
+    await service.initialize(const ['comic-a']);
+
+    expect(service.groupIdsForComic('comic-a'), hasLength(1));
+    // A custom group wins over the default "not grouped" bucket.
+    expect(
+      service.primaryGroupIdForComic('comic-a'),
+      isNot(DownloadGroupsService.defaultGroupId),
+    );
+    expect(
+      service.groupIdsForComic('comic-a').single,
+      service.primaryGroupIdForComic('comic-a'),
+    );
+    expect(
+      service.comicKeysForGroup(DownloadGroupsService.defaultGroupId),
+      isEmpty,
+    );
+  });
+
+  test('collapseToSingleGroupMemberships is a no-op for clean data', () async {
+    await service.initialize(const ['comic-a', 'comic-b']);
+    final first = await service.createGroup('First');
+    await service.moveComicToGroup('comic-b', first.id);
+
+    expect(await service.collapseToSingleGroupMemberships(), 0);
+    expect(service.groupIdsForComic('comic-a'), {
+      DownloadGroupsService.defaultGroupId,
+    });
+    expect(service.groupIdsForComic('comic-b'), {first.id});
+  });
+
   test('batch add and move update all selected comics together', () async {
     await service.initialize(const ['comic-a', 'comic-b']);
     final first = await service.createGroup('First');
